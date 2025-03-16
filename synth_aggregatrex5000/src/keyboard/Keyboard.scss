@@ -1,0 +1,151 @@
+
+
+.flat-sharp, .natural {
+    display: inline-block;
+    cursor: pointer;
+}
+
+.keyboard {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 10%;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.flat-sharp {
+    background-color: black;
+    color: white;
+    padding-bottom: 1em;
+    width: 5em;
+    height: 22em;
+    font: 0.2em sans-serif;
+    margin-bottom: 7em;
+    border-top: black 0.1em solid;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; 
+    text-align: center; 
+  }
+
+.natural {
+  background-color: #ffffff;
+  color: rgb(0, 0, 0);
+  border: none;
+  margin-top: 0em; 
+  height: 30em;
+  width: 5em; 
+  font: 0.2em sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; 
+  text-align: center; 
+}
+
+
+.button-active-natural {
+  background: radial-gradient(circle, green, white, white);
+  color: rgb(0, 0, 0);
+  border: none;
+  margin-top: 0em; 
+  height: 30em;
+  width: 5em; 
+  font: 0.2em sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; 
+  text-align: center; 
+}
+
+
+.button-active-flat {
+    background: radial-gradient(circle, green, black);
+    color: white;
+    padding-bottom: 1em;
+    width: 5em;
+    height: 22em;
+    font: 0.2em sans-serif;
+    margin-bottom: 7em;
+    border-top: black 0.1em solid;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; 
+    text-align: center; 
+  } 
+
+//left only  E B
+
+.note-b, .note-e {
+  position: relative;
+  border-right: black 0.1em solid;
+}
+
+.note-b::before,
+.note-e::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -2.3em;
+  height: 100%;
+  width: 7.9em;  
+  background-color: white;
+  z-index: -1;
+}
+
+
+
+//right only C F
+
+.note-c, .note-f {
+  position: relative;
+}
+
+.note-c::after,
+.note-f::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -2.4em;
+  height: 100%;
+  width: 7.8em;  
+  background-color: white;
+  z-index: -1;
+}
+
+
+
+//both D G A
+
+.note-a, .note-d, .note-g {
+  position: relative;
+}
+
+.note-a::after,
+.note-d::after,
+.note-g::after,
+.note-a::before,
+.note-d::before,
+.note-g::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 8.14em;
+  background-color: white;
+  z-index: -1;
+}
+
+.note-a::after,
+.note-d::after,
+.note-g::after {
+  right: -0.8em;
+}
+
+.note-a::before,
+.note-d::before,
+.note-g::before {
+  left: -0.8em;
+}
+

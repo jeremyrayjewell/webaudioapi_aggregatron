@@ -1,0 +1,30 @@
+// my-app/src/synth/AmplitudeControl.scss
+.amplitude-control {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  gap: 1em;
+  color: greenyellow;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 0.6rem;
+  padding: 0.8rem;
+}
+
+.filter-label {
+  display: block;
+  text-align: center;
+  font-size: 0.6rem;
+  color: greenyellow;
+}
+
+.oscillator-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+label {
+  align-items: center;
+  margin-bottom: 10px;
+}
