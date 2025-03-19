@@ -1,0 +1,273 @@
+@font-face {
+  font-family: 'BasicaFuture';
+  src: url('./assets/Bitwise.ttf') format('truetype');
+  font-weight: heavy;
+  font-style: normal;
+}
+
+/* 1) Define your color and spacing variables */
+:root {
+  --color-bg: #000000;
+  --color-text-default: #333;
+  --color-heading: #12ff12;
+  --color-primary: #20c2ca;
+  --color-secondary: #88f7ff;
+  --color-button-hover: #E8382E;
+  --color-track-bg: #e8372e5b;
+
+  /* Shared gradient stops */
+  --gradient-trans-start: rgba(32, 194, 202, 0);
+  --gradient-trans-mid-light: rgba(32, 194, 202, 0.1);
+  --gradient-trans-mid: rgba(32, 194, 202, 0.5);
+  --gradient-trans-mid-strong: rgba(32, 194, 202, 1);
+  --gradient-trans-end: rgba(32, 194, 202, 0);
+
+  --spacing-base: 1rem;
+  --shadow-default: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 2) Global element styles */
+body {
+  margin: 0;
+  font-family: 'BasicaFuture', Arial, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-default);
+  line-height: 1.6;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: top;
+  font-size: 1.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.wrapper {
+  position: fixed;
+  top: 150px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+}
+
+/* 3) Container with hover gradient */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--spacing-base);
+  position: relative;
+}
+
+.container:hover {
+  background: linear-gradient(
+    var(--gradient-trans-start) 0%,
+    var(--gradient-trans-mid) 50%,
+    var(--gradient-trans-end) 100%
+  );
+  box-shadow: var(--shadow-default);
+}
+
+/* 4) Headings */
+h1,
+h2,
+h3 {
+  color: var(--color-heading);
+  margin-bottom: 0.5rem;
+}
+
+/* 5) Inputs */
+input {
+  background: transparent;
+  color: var(--color-secondary);
+  border: 1px solid var(--color-secondary);
+  text-align: center;
+}
+
+/* 6) Buttons */
+button {
+  font-family: 'BasicaFuture', Arial, sans-serif;
+  padding: 0.5rem 1rem;
+  border: none;
+  background-color: var(--color-primary);
+  color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+button:hover {
+  background-color: var(--color-button-hover);
+}
+
+input[type="file"] {
+  margin: var(--spacing-base) 0;
+}
+
+/* 7) Utility classes for spacing */
+.mt-1 {
+  margin-top: var(--spacing-base);
+}
+
+.mb-1 {
+  margin-bottom: var(--spacing-base);
+}
+
+/* 8) Slider components */
+/* Single definition for .horizontal-slider */
+.horizontal-slider {
+  width: 100%;
+  height: 25px;
+  margin: 10px 0;
+  position: relative;
+}
+
+/* Combine thumb styles into one block */
+.thumb {
+  position: absolute;
+  top: -8px;
+  width: 25px;
+  height: 25px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: var(--shadow-default);
+
+  /* Extra thumb styles (text in center, etc.) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+}
+
+.custom-audio-player {
+  display: inline-flex; /* Make the container fit the content */
+  align-items: center; /* Center the button vertically */
+  background-color: var(--color-bg); /* Optional: Keep background styling */
+  border-radius: 5px; /* Optional: Keep rounded corners */
+  font-size: 1.25rem;
+}
+
+.custom-audio-player button {
+  font-family: 'BasicaFuture', Arial, sans-serif;
+  padding: 0.5rem 1rem; /* Same padding as other buttons */
+  border: none;
+  background-color: var(--color-primary);
+  color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 1.25rem; /* Same font size as other buttons */
+  transition: background-color 0.2s ease-in-out;
+}
+
+.custom-audio-player button:hover {
+  background-color: var(--color-button-hover);
+}
+.custom-audio-player input[type="range"] {
+  flex: 1;
+  cursor: pointer;
+}
+
+.custom-audio-player span {
+  font-size: 0.875rem;
+  color: var(--color-secondary);
+}
+
+.segment-container {
+  display: flex; /* Enable Flexbox */
+  justify-content: center; /* Space out the items horizontally */
+  align-items: center; /* Center the items vertically */
+  gap: 1rem; /* Add spacing between the items */
+  text-align: center; /* Ensure text inside items is centered */
+}
+
+.hit-index {
+  text-align: center;
+  background: transparent;
+}
+
+.thumb:active {
+  cursor: grabbing;
+}
+
+/* Track styles */
+.track {
+  height: 10px;
+  background: var(--color-track-bg);
+  border-radius: 5px;
+}
+
+.track-selected {
+  background: var(--color-primary); /* “selected” portion color */
+}
+
+/* 9) Control groups */
+.control-group {
+  margin-bottom: var(--spacing-base);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.control-group.horizontal {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slider-container {
+  flex: 1;
+}
+
+.value-display {
+  margin-left: var(--spacing-base);
+  white-space: nowrap;
+}
+
+/* 10) List items, drop zones, etc. */
+ul {
+  padding-left: 0;
+  margin-left: 0;
+}
+
+li {
+  list-style: none;
+}
+
+/* Shared styling for li, .drop-zone, and .control-group.horizontal */
+li,
+.drop-zone,
+.control-group.horizontal {
+  padding: 0.5rem;
+  border-radius: 3px;
+  background: linear-gradient(
+    var(--gradient-trans-start) 0%,
+    var(--gradient-trans-mid-light) 50%,
+    var(--gradient-trans-end) 100%
+  );
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.5rem;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  color: var(--color-heading);
+}
+
+li:hover,
+.drop-zone:hover,
+.control-group.horizontal:hover {
+  background: linear-gradient(
+    var(--gradient-trans-start) 0%,
+    var(--gradient-trans-mid-strong) 50%,
+    var(--gradient-trans-start) 100%
+  );
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  color: var(--color-secondary);
+}
+
+/* 11) Optional small text styling */
+span {
+  font-size: 0.75rem;
+}
