@@ -1,0 +1,40 @@
+/* Global styles to prevent unwanted borders */
+html, body, #root {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  border: none !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Remove any unwanted outlines or borders from all elements */
+* {
+  box-sizing: border-box;
+  border-color: transparent;
+}
+
+/* Ensure canvas elements don't create unwanted borders */
+canvas {
+  display: block; /* Removes the small inline gap */
+  border: none !important;
+  outline: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Ensure container elements properly handle their children */
+.container-fluid, .row, .col-12, .App {
+  overflow: hidden !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Specific fix for canvas rendering artifacts */
+.App canvas {
+  transform: translateZ(0); /* Enable hardware acceleration */
+  backface-visibility: hidden; /* Prevent rendering artifacts */
+  -webkit-backface-visibility: hidden;
+}

@@ -1,5 +1,3 @@
-// scales.js
-
 export const SCALES = {
   A: {
     minor: {
@@ -207,7 +205,7 @@ Atonal: {
     ] || [],
     randomSeries: [110, 146.83, 233.08, 123.47, 174.61, 207.65, 130.81, 196, 155.56, 185, 138.59, 164.81] || [],
     spectral: [110, 220, 330, 440, 550, 660, 770, 880, 990, 1100, 1210, 1320, 1430, 1540, 1650, 1760] || [],
-    // noiseRange: Array.from({ length: 16 }, (_, i) => 110 + i * 10) || [] // Generates 16 arbitrary frequencies for randomness
+    // noiseRange: Array.from({ length: 16 }, (_, i) => 110 + i * 10) || [] 
   },
 },
 };

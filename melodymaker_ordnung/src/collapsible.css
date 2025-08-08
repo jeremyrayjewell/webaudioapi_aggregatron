@@ -1,0 +1,98 @@
+/* Collapsible section styles for MelodyMaker */
+
+/* Global override for h4 elements with .dos-subtitle class to remove << and >> */
+h4.dos-subtitle::before,
+h4.dos-subtitle::after {
+  content: "" !important;
+  display: none !important;
+  margin: 0 !important;
+}
+
+/* Collapsible section container */
+.collapsible-section {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin 0.3s ease-out;
+}
+
+/* Collapsed state */
+.collapsible-section-collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Expanded state */
+.collapsible-section-expanded {
+  max-height: 1000px; /* Large enough to contain content */
+  opacity: 1;
+  margin-bottom: 16px;
+}
+
+/* Heading styles */
+.dos-subtitle {
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px;
+  margin: 0;
+  width: 100%;
+}
+
+/* Remove default << and >> from h4 elements in our collapsible sections */
+.dos-subtitle::before, 
+.dos-subtitle::after,
+.dos-subtitle-container h4::before,
+.dos-subtitle-container h4::after {
+  content: none !important;
+  margin: 0 !important;
+  display: none !important;
+}
+
+/* Collapse indicator styling */
+.collapse-indicator {
+  margin-left: 8px;
+  font-weight: bold;
+  font-family: monospace;
+  display: inline-block;
+  min-width: 24px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  float: none; /* Override float right from styles.css */
+}
+
+/* Add hover effect */
+.collapse-indicator:hover {
+  color: #fff;
+  background-color: #00a;
+  border: 1px solid #fff;
+}
+
+/* Status indicator for enabled features */
+.status-indicator {
+  margin-left: 8px;
+  font-weight: bold;
+  color: #0f0;
+  font-family: monospace;
+  float: none;
+}
+
+/* Additional overrides to prevent the << and >> from appearing */
+/* Target all possible combinations to ensure overrides */
+.dos-subtitle-container h4.dos-subtitle::before,
+.dos-subtitle-container h4.dos-subtitle::after,
+.dos-subtitle-container h4::before,
+.dos-subtitle-container h4::after,
+h4.dos-subtitle::before,
+h4.dos-subtitle::after,
+div.dos-subtitle-container > h4::before,
+div.dos-subtitle-container > h4::after {
+  display: none !important;
+  content: "" !important;
+  margin: 0 !important;
+}

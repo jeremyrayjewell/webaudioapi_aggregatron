@@ -1,15 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
+<html lang="en">  <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
       content="Web site created using create-react-app"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    
+    <!-- BOOTSTRA.386 CSS -->
+    <link href="%PUBLIC_URL%/bootstrap386/bootstrap-4.4.1-dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="%PUBLIC_URL%/bootstrap386/bootstrap-4.4.1-dist/css/bootstrap-386.css" rel="stylesheet">
+    <link href="%PUBLIC_URL%/bootstrap386/bootstrap-4.4.1-dist/css/bootstrap-386-themes.css" rel="stylesheet">
+    
+    <!-- Transparent background overrides -->
+    <style>
+      html, body, #root, .App, .container-fluid, .dosbox, 
+      .row, .col, .col-md-12, [class*="animated-ascii"],
+      .animated-ascii-container, .animated-ascii-container * {
+        background-color: transparent !important;
+      }
+      
+      /* First ASCII art should keep original size */
+      .row:first-child .animated-ascii-container {
+        font-size: 16px !important;
+        line-height: 1 !important;
+      }
+      
+      /* Replace red with blue */
+      [style*="background-color: #aa0000"] {
+        background-color: #0000aa !important;
+      }
+    </style>
+    
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
@@ -24,7 +49,7 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
+    <title>𝐎𝐑𝐃𝐍𝐔𝐍𝐆</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -38,6 +63,18 @@
 
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+    -->    <!-- BOOTSTRA.386 JavaScript -->
+    <script src="%PUBLIC_URL%/bootstrap386/bootstrap-4.4.1-dist/js/jquery.min.js"></script>
+    <script src="%PUBLIC_URL%/bootstrap386/bootstrap-4.4.1-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="%PUBLIC_URL%/bootstrap386/bootstrap-4.4.1-dist/js/bootstrap-386.js"></script>
+    
+    <script>
+      // Configure BOOTSTRA.386
+      _386 = {
+        fastLoad: false,
+        onePass: false,
+        speedFactor: 1.5
+      };
+    </script>
   </body>
 </html>
