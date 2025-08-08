@@ -7,14 +7,18 @@ export const setupAudioGraph = (ctx) => {
     delay: ctx.createDelay(),
     feedback: ctx.createGain(),
     panner: ctx.createStereoPanner(),
-    osc1: ctx.createOscillator(),  //  Make sure osc1 is created here!
-    gain1: ctx.createGain(),
     convolver: ctx.createConvolver(),
     analyser: ctx.createAnalyser(),
   };
 
+  // Configure analyser
+  nodes.analyser.fftSize = 2048;
+  nodes.analyser.minDecibels = -90;
+  nodes.analyser.maxDecibels = -10;
+  nodes.analyser.smoothingTimeConstant = 0.85;
+
   // Check for undefined nodes
-  if (!nodes.master || !nodes.filter || !nodes.osc1) {
+  if (!nodes.master || !nodes.filter) {
     console.error("Critical audio nodes are undefined:", nodes);
   }
 

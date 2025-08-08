@@ -10,6 +10,16 @@ const WaveformVisualizer = ({ analyser }) => {
 
     const canvas = canvasRef.current;
     const canvasCtx = canvas.getContext('2d');
+    
+    // Set canvas size to match its display size
+    const resizeCanvas = () => {
+      const { width, height } = canvas.getBoundingClientRect();
+      canvas.width = width;
+      canvas.height = height;
+    };
+    
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
     const drawWaveform = () => {
       const bufferLength = analyser.fftSize;
@@ -51,6 +61,11 @@ const WaveformVisualizer = ({ analyser }) => {
     };
 
     drawWaveform();
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+    };
   }, [analyser]);
 
   return <canvas ref={canvasRef} className="waveform-visualizer" />;

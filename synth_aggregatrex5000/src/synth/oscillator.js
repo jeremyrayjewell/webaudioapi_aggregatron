@@ -10,7 +10,8 @@ let audioNodes = null;
 
 const preloadImpulseResponse = async (audioContext) => {
   try {
-    const response = await fetch('./assets/impulse-response.wav');
+    // Use the correct path relative to the public folder
+    const response = await fetch(process.env.PUBLIC_URL + '/impulse-response.wav');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -22,16 +23,11 @@ const preloadImpulseResponse = async (audioContext) => {
 };
 
 export const useOscillator = () => {
-  const { audioContext } = useContext(AudioContextContext);
+  const { audioContext, nodes } = useContext(AudioContextContext);
 
-  if (!audioContext) {
-    console.error('AudioContext is not available');
+  if (!audioContext || !nodes) {
+    console.error('AudioContext or nodes not available');
     return { startOscillator: () => {}, stopOscillator: () => {} };
-  }
-
-  if (!audioNodes) {
-    audioNodes = setupAudioGraph(audioContext);
-    setupSignalFlow(audioNodes, audioNodes.analyser, audioContext.destination);
   }
 
   if (!reverbBuffer) preloadImpulseResponse(audioContext);
@@ -77,12 +73,14 @@ export const useOscillator = () => {
       now + adsr.attack + adsr.decay
     );
 
+    // Connect to the main signal path through our nodes
     osc1.connect(gain1);
-    gain1.connect(audioNodes.analyser); 
-    audioNodes.analyser.connect(audioContext.destination); 
+    gain1.connect(nodes.filter); // Connect to the main filter node
 
+    // Start the oscillators
     osc1.start();
     lfoOsc.start();
+    
     activeOscillators[freq] = { osc1, gain1, lfoOsc, adsr };
   };
 
