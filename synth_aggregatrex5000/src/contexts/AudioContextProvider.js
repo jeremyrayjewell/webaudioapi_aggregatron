@@ -5,6 +5,25 @@ import { setupSignalFlow } from '../synth/signalFlow';
 
 export const AudioContextContext = createContext();
 
+// Module-scoped helper: load the impulse response buffer into the convolver
+async function loadImpulse(ctx, nodes, attempt = 1) {
+  if (!nodes?.convolver || nodes.convolver.buffer) return;
+  try {
+    const url = attempt === 1 ? '/impulse-response.wav' : `/impulse-response.wav?bust=${Date.now()}`;
+    const resp = await fetch(url, { cache: 'reload' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const arr = await resp.arrayBuffer();
+    const buf = await ctx.decodeAudioData(arr.slice(0));
+    nodes.convolver.buffer = buf;
+    console.log('[AudioProvider] Impulse loaded (dur', buf.duration.toFixed(2), 's)');
+  } catch (e) {
+    console.warn('[AudioProvider] Impulse load failed attempt', attempt, e.message);
+    if (attempt < 3) {
+      setTimeout(() => loadImpulse(ctx, nodes, attempt + 1), 500 * attempt);
+    }
+  }
+}
+
 export const AudioContextProvider = ({ children }) => {
   const [audioContext, setAudioContext] = useState(null);
   const [analyser, setAnalyser] = useState(null);
@@ -13,24 +32,6 @@ export const AudioContextProvider = ({ children }) => {
   const [initialized, setInitialized] = useState(false);
   const nodesRef = useRef(null);
   const audioContextRef = useRef(null);
-
-  const loadImpulse = async (ctx, nodes, attempt = 1) => {
-    if (!nodes?.convolver || nodes.convolver.buffer) return;
-    try {
-      const url = attempt === 1 ? '/impulse-response.wav' : `/impulse-response.wav?bust=${Date.now()}`;
-      const resp = await fetch(url, { cache: 'reload' });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const arr = await resp.arrayBuffer();
-      const buf = await ctx.decodeAudioData(arr.slice(0));
-      nodes.convolver.buffer = buf;
-      console.log('[AudioProvider] Impulse loaded (dur', buf.duration.toFixed(2),'s)');
-    } catch (e) {
-      console.warn('[AudioProvider] Impulse load failed attempt', attempt, e.message);
-      if (attempt < 3) {
-        setTimeout(() => loadImpulse(ctx, nodes, attempt + 1), 500 * attempt);
-      }
-    }
-  };
 
   const actuallyInit = useCallback(async () => {
     let ctx = audioContextRef.current;
