@@ -2,11 +2,11 @@
 import { useContext } from 'react';
 import { AudioContextContext } from '../contexts/AudioContextProvider';
 import { setupAudioGraph } from './setupAudioGraph';
-import { setupSignalFlow } from './signalFlow';
+// import { setupSignalFlow } from './signalFlow'; // unused import
 import { applyTimbre } from './timbreControl';
 
 const activeOscillators = {};
-let audioNodes = null;
+let _audioNodes = null; // unused, prefix with _
 
 export const useOscillator = () => {
   const { audioContext, nodes } = useContext(AudioContextContext);
@@ -95,14 +95,14 @@ export const useOscillator = () => {
         console.warn('[useOscillator] applyTimbre failed', e);
       }
     }
-    let mainTarget = null;
+    let _mainTarget = null; // unused, prefix with _
     if (nodes.filter) {
       gain1.connect(nodes.filter);
-      mainTarget = nodes.filter;
+      _mainTarget = nodes.filter;
     } else if (nodes.master) {
       console.warn('[useOscillator] Filter missing; connecting directly to master');
       gain1.connect(nodes.master);
-      mainTarget = nodes.master;
+      _mainTarget = nodes.master;
     } else {
       console.error('[useOscillator] Neither filter nor master node available for connection');
     }

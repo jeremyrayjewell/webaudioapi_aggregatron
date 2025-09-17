@@ -84,7 +84,7 @@ export const AudioContextProvider = ({ children }) => {
       // Do NOT close the context automatically; StrictMode double-mount would kill audio.
       mounted = false;
     };
-  }, []);
+  }, [actuallyInit]);
 
   // Expose startAudio so UI can show a button
   // Developer helpers
