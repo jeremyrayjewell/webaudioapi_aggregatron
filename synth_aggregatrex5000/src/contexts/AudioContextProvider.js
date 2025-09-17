@@ -17,7 +17,8 @@ export const AudioContextProvider = ({ children }) => {
   const loadImpulse = async (ctx, nodes, attempt = 1) => {
     if (!nodes?.convolver || nodes.convolver.buffer) return;
     try {
-      const resp = await fetch(process.env.PUBLIC_URL + '/impulse-response.wav');
+      const url = attempt === 1 ? '/impulse-response.wav' : `/impulse-response.wav?bust=${Date.now()}`;
+      const resp = await fetch(url, { cache: 'reload' });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const arr = await resp.arrayBuffer();
       const buf = await ctx.decodeAudioData(arr.slice(0));
