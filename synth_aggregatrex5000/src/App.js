@@ -19,7 +19,7 @@ function App() {
   const [reverbLevel, setReverbLevel] = useState(0);
   const [reverbDecay, setReverbDecay] = useState(1);
 
-  const { audioContext, analyser, startAudio, initError, attemptedAutoInit } = useContext(AudioContextContext);
+  const { audioContext, analyser, startAudio, attemptedAutoInit } = useContext(AudioContextContext);
 
   // Always render app; show overlay button when audio isn't started
 

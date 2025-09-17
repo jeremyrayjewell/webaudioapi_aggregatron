@@ -5,7 +5,7 @@ export default function MobilePan({ children }) {
   const railRef = useRef(null);
   const panRef = useRef(null);
   const [enabled, setEnabled] = useState(false);
-  const [offset, setOffset] = useState(0); // kept for potential transform fallback
+  const [offset] = useState(0); // kept for potential transform fallback
   const dragState = useRef({
     maybeDown: false,
     dragging: false,
@@ -56,7 +56,6 @@ export default function MobilePan({ children }) {
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onResize);
     let ro;
-    const rail = railRef.current;
     const pan = panRef.current;
     if (pan && 'ResizeObserver' in window) {
       ro = new ResizeObserver(() => measure());
