@@ -3,7 +3,7 @@
 export function makeDistortionCurve(drive = 0.5, samples = 2048) {
   const k = drive * 100; // scale for intensity
   const curve = new Float32Array(samples);
-  const _deg = Math.PI / 180; // unused, prefix with _
+  // removed unused _deg
   for (let i = 0; i < samples; ++i) {
     const x = (i * 2) / samples - 1; // -1..1
     // Arctangent style shaping (soft clipping)

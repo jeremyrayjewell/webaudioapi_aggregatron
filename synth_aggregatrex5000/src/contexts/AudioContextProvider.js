@@ -1,5 +1,5 @@
 // src/contexts/AudioContextProvider.js
-import React, { createContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useState, useEffect, useRef, useCallback } from 'react';
 import { setupAudioGraph } from '../synth/setupAudioGraph';
 import { setupSignalFlow } from '../synth/signalFlow';
 
@@ -32,7 +32,7 @@ export const AudioContextProvider = ({ children }) => {
     }
   };
 
-  const actuallyInit = async () => {
+  const actuallyInit = useCallback(async () => {
     let ctx = audioContextRef.current;
     if (!ctx || ctx.state === 'closed') {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -51,13 +51,13 @@ export const AudioContextProvider = ({ children }) => {
     const nodes = setupAudioGraph(ctx);
     nodesRef.current = nodes;
     setAnalyser(nodes.analyser);
-  setupSignalFlow(nodes, nodes.analyser, ctx.destination);
-  // Kick off impulse loading
-  loadImpulse(ctx, nodes);
+    setupSignalFlow(nodes, nodes.analyser, ctx.destination);
+    // Kick off impulse loading
+    loadImpulse(ctx, nodes);
     setAudioContext(ctx);
     setInitError(null);
     setInitialized(true);
-  };
+  }, []);
 
   const startAudio = async () => {
     try {
