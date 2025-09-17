@@ -39,3 +39,8 @@
 .sequencer label {
   margin-right: 0.5em;
 }
+
+/* Global knob outline to match effect controls styling */
+.control-panel .p-knob {
+  filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 4px rgba(0,0,0,0.6));
+}

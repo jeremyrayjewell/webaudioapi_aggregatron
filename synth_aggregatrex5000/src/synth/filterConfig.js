@@ -1,12 +1,22 @@
 export const configureFilter = (filter, type, cutoff, resonance) => {
-    if (!filter) { // Error handling
-        console.error("Filter node is undefined in configureFilter");
+    if (!filter) {
+        console.error('Filter node is undefined in configureFilter');
         return;
     }
 
-    filter.type = type; // Set type
-    filter.frequency.value = cutoff; // Frequency in Hz
-    filter.Q.value = resonance; // Resonance (Q)
+    // Gracefully handle a UI 'none' option by using 'allpass'
+    const appliedType = type === 'none' ? 'allpass' : type;
+    try {
+        filter.type = appliedType;
+    } catch (e) {
+        console.warn(`Unsupported filter type '${appliedType}', defaulting to 'lowpass'`);
+        filter.type = 'lowpass';
+    }
 
-    console.log("Filter configured:", filter.type, filter.frequency.value, filter.Q.value);
+    // Clamp cutoff within valid range
+    const safeCutoff = Math.min(Math.max(cutoff, 20), 20000);
+    filter.frequency.setValueAtTime(safeCutoff, filter.context.currentTime);
+    filter.Q.setValueAtTime(Math.max(0, resonance), filter.context.currentTime);
+
+    console.log('Filter configured:', { type: filter.type, frequency: safeCutoff, Q: filter.Q.value });
 };

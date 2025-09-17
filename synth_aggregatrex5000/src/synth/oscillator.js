@@ -3,34 +3,28 @@ import { useContext } from 'react';
 import { AudioContextContext } from '../contexts/AudioContextProvider';
 import { setupAudioGraph } from './setupAudioGraph';
 import { setupSignalFlow } from './signalFlow';
+import { applyTimbre } from './timbreControl';
 
 const activeOscillators = {};
-let reverbBuffer = null;
 let audioNodes = null;
-
-const preloadImpulseResponse = async (audioContext) => {
-  try {
-    // Use the correct path relative to the public folder
-    const response = await fetch(process.env.PUBLIC_URL + '/impulse-response.wav');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    reverbBuffer = await audioContext.decodeAudioData(arrayBuffer);
-  } catch (err) {
-    console.error('Failed to preload impulse response:', err);
-  }
-};
 
 export const useOscillator = () => {
   const { audioContext, nodes } = useContext(AudioContextContext);
 
   if (!audioContext || !nodes) {
-    console.error('AudioContext or nodes not available');
+    console.error('[useOscillator] AudioContext or nodes not available');
     return { startOscillator: () => {}, stopOscillator: () => {} };
   }
 
-  if (!reverbBuffer) preloadImpulseResponse(audioContext);
+  // Ensure master gain isn't accidentally zeroed elsewhere
+  if (nodes.master && nodes.master.gain.value === 0) {
+    console.warn('[useOscillator] Master gain was 0. Resetting to 0.8');
+    nodes.master.gain.value = 0.8;
+  }
+
+  if (nodes?.convolver && !nodes.convolver.buffer) {
+    console.warn('[useOscillator] Convolver has no buffer yet (impulse still loading)');
+  }
 
   const startOscillator = (
     rawFreq,
@@ -47,6 +41,7 @@ export const useOscillator = () => {
     }
 
     if (audioContext.state === 'suspended') {
+      console.log('[useOscillator] Resuming suspended AudioContext');
       audioContext.resume();
     }
 
@@ -55,11 +50,28 @@ export const useOscillator = () => {
     const lfoOsc = audioContext.createOscillator();
     const lfoGain = audioContext.createGain();
 
-    osc1.type = type;
+  osc1.type = type;
     osc1.frequency.value = freq;
 
     lfoOsc.type = 'sine';
     lfoOsc.frequency.value = lfo.rate;
+    // Apply phase offset if provided (degrees) by constructing a periodic wave
+    if (typeof lfo.phase === 'number' && lfo.phase !== 0) {
+      const phaseRad = (lfo.phase * Math.PI) / 180;
+      // A sine with phase phi: sin(wt + phi) = sin(wt)cos(phi) + cos(wt)sin(phi)
+      // Web Audio periodicWave arrays: index 1 imag = sin coeff, real = cos coeff
+      const real = new Float32Array(2);
+      const imag = new Float32Array(2);
+      real[0] = 0; imag[0] = 0; // DC
+      real[1] = Math.sin(phaseRad); // cosine coefficient
+      imag[1] = Math.cos(phaseRad); // sine coefficient
+      try {
+        const wave = audioContext.createPeriodicWave(real, imag);
+        lfoOsc.setPeriodicWave(wave);
+      } catch (e) {
+        console.warn('[useOscillator] LFO phase periodicWave failed', e);
+      }
+    }
     lfoGain.gain.value = lfo.depth * freq;
 
     lfoOsc.connect(lfoGain);
@@ -75,13 +87,41 @@ export const useOscillator = () => {
 
     // Connect to the main signal path through our nodes
     osc1.connect(gain1);
-    gain1.connect(nodes.filter); // Connect to the main filter node
+    // Apply generalized timbre shaping using existing lfo.pulseWidth param as 'timbre'
+    if (typeof lfo.pulseWidth === 'number') {
+      try {
+        applyTimbre(osc1, type, lfo.pulseWidth);
+      } catch (e) {
+        console.warn('[useOscillator] applyTimbre failed', e);
+      }
+    }
+    let mainTarget = null;
+    if (nodes.filter) {
+      gain1.connect(nodes.filter);
+      mainTarget = nodes.filter;
+    } else if (nodes.master) {
+      console.warn('[useOscillator] Filter missing; connecting directly to master');
+      gain1.connect(nodes.master);
+      mainTarget = nodes.master;
+    } else {
+      console.error('[useOscillator] Neither filter nor master node available for connection');
+    }
+
+    // Reverb send (pre-filter gain tap)
+    if (nodes.reverbGain) {
+      const sendGain = audioContext.createGain();
+      // Use current global reverb send level as baseline
+      sendGain.gain.value = nodes.reverbGain.gain.value;
+      gain1.connect(sendGain);
+      sendGain.connect(nodes.reverbGain);
+    }
 
     // Start the oscillators
     osc1.start();
     lfoOsc.start();
     
-    activeOscillators[freq] = { osc1, gain1, lfoOsc, adsr };
+  activeOscillators[freq] = { osc1, gain1, lfoOsc, adsr };
+  console.log('[useOscillator] Started oscillator', { freq, type, amplitude, adsr, lfo });
   };
 
   const stopOscillator = (rawFreq, immediate = false) => {
@@ -109,6 +149,12 @@ export const useOscillator = () => {
       }, adsr.release * 1000);
     }
   };
+
+  // Expose simple test utilities for manual debugging
+  if (typeof window !== 'undefined') {
+    window.__startTestTone = () => startOscillator(440, 'sine');
+    window.__stopTestTone = () => stopOscillator(440, true);
+  }
 
   return { startOscillator, stopOscillator };
 };

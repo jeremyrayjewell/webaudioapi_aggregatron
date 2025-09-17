@@ -102,35 +102,32 @@ export const Keyboard = React.memo((props) => {
 
   // MIDI event handling
   useEffect(() => {
+    let accessRef = null;
+    let cancelled = false;
     const handleMIDIMessage = ({ data }) => {
       const [status, note, velocity] = data;
       const freq = parseFloat(midiNoteToFrequency(note).toFixed(2));
-
-      console.log('Raw MIDI Data:', data);
-
-      if ((status & 0xf0) === 144) { // "Note On" message
+      const cmd = status & 0xf0;
+      if (cmd === 0x90) { // Note On (or Note Off if vel 0)
         if (velocity > 0) {
-          console.log(`Note On: ${note} (Frequency: ${freq}) with Velocity: ${velocity}`);
           handleNoteStart(freq);
         } else {
-          console.log(`Note Off (via Note On): ${note} (Frequency: ${freq}) with Velocity: ${velocity}`);
           handleNoteStop(freq);
         }
-      } else if ((status & 0xf0) === 128) { // "Note Off" message
-        console.log(`Note Off: ${note} (Frequency: ${freq})`);
+      } else if (cmd === 0x80) { // Note Off
         handleNoteStop(freq);
-      } else {
-        console.warn('Unhandled MIDI message:', { status, note, velocity });
       }
     };
 
-    const midiAccess = requestMIDI(handleMIDIMessage);
+    (async () => {
+      accessRef = await requestMIDI(handleMIDIMessage);
+      if (cancelled) return;
+    })();
 
     return () => {
-      if (midiAccess?.inputs) {
-        midiAccess.inputs.forEach((input) => {
-          input.onmidimessage = null;
-        });
+      cancelled = true;
+      if (accessRef?.inputs) {
+        accessRef.inputs.forEach(i => (i.onmidimessage = null));
       }
     };
   }, [handleNoteStart, handleNoteStop]);

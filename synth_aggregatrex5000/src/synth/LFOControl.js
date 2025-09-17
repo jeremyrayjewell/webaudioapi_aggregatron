@@ -42,7 +42,7 @@ export const LFOControl = ({ lfo, setLFO }) => {
         depth
       </label>
       <label>
-        <img src={lfoPulseWidth} alt="LFO Pulse Width" className="oscillator-icon" />
+  <img src={lfoPulseWidth} alt="timbre" className="oscillator-icon" />
         <Knob
           value={lfo.pulseWidth}
           step={0.01}
@@ -51,7 +51,7 @@ export const LFOControl = ({ lfo, setLFO }) => {
           onChange={(e) => handleChange('pulseWidth', e.value)}
           size={40}
         />
-        width
+  timbre
       </label>
       <label>
         <img src={lfoPhase} alt="LFO Phase" className="oscillator-icon" />

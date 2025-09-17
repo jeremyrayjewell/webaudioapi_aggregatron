@@ -8,7 +8,14 @@ export const setupAudioGraph = (ctx) => {
     feedback: ctx.createGain(),
     panner: ctx.createStereoPanner(),
     convolver: ctx.createConvolver(),
-    analyser: ctx.createAnalyser(),
+  analyser: ctx.createAnalyser(),
+  // Distortion chain
+  preGain: ctx.createGain(),
+  waveshaper: ctx.createWaveShaper(),
+  distortionWet: ctx.createGain(),
+  distortionDry: ctx.createGain(),
+  // Dynamics
+  compressor: ctx.createDynamicsCompressor(),
   };
 
   // Configure analyser
@@ -31,6 +38,22 @@ export const setupAudioGraph = (ctx) => {
   nodes.master.gain.value = 0.8;
   nodes.reverbGain.gain.value = 0.3;
   nodes.feedback.gain.value = 0.4;
+
+  // Distortion defaults
+  nodes.preGain.gain.value = 1.0; // will scale with drive
+  nodes.distortionWet.gain.value = 0.5;
+  nodes.distortionDry.gain.value = 0.5;
+
+  // Basic compressor defaults (gentle glue)
+  try {
+    nodes.compressor.threshold.value = -24;
+    nodes.compressor.knee.value = 30;
+    nodes.compressor.ratio.value = 4;
+    nodes.compressor.attack.value = 0.003;
+    nodes.compressor.release.value = 0.25;
+  } catch (e) {
+    console.warn('Compressor parameter set failed (browser support?):', e);
+  }
 
 
   return nodes;

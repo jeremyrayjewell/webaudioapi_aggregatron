@@ -17,11 +17,21 @@ function App() {
   const [reverbLevel, setReverbLevel] = useState(0);
   const [reverbDecay, setReverbDecay] = useState(1);
 
-  const { audioContext, analyser } = useContext(AudioContextContext);
+  const { audioContext, analyser, startAudio, initError, attemptedAutoInit } = useContext(AudioContextContext);
 
   if (!audioContext || !analyser) {
-    console.log('Waiting for AudioContext and Analyser...');
-    return <div>Loading Audio Context...</div>;
+    return (
+      <div className="App" style={{ justifyContent: 'center' }}>
+        <h2>Audio Engine Not Started</h2>
+        {initError && <p style={{ color: 'salmon' }}>Init issue: {initError}</p>}
+        <button onClick={startAudio} style={{ padding: '0.75rem 1.25rem', fontSize: '1rem', cursor: 'pointer' }}>
+          {attemptedAutoInit ? 'Enable Audio' : 'Start Audio'}
+        </button>
+        <p style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '1rem' }}>
+          Your browser may require a user gesture (click / key press) to start Web Audio.
+        </p>
+      </div>
+    );
   }
 
   console.log('AudioContext and Analyser ready:', { audioContext, analyser });

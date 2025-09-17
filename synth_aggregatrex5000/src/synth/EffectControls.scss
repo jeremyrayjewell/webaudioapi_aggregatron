@@ -1,0 +1,44 @@
+// Shared styling for newly added effect controls (distortion, compressor)
+.effect-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  color: greenyellow; // match primary synth color
+  font-family: "Share Tech Mono", monospace;
+  font-size: 0.6rem;
+  padding: 0.6rem 0.4rem;
+}
+
+.effect-title {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.knob-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.8rem;
+}
+
+.knob-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.knob-label {
+  text-align: center;
+}
+
+// Slight differentiation
+.distortion-control .effect-title { color: #ffb070; }
+.compressor-control .effect-title { color: #88bfff; }
+
+// Optional: subtle ring for knobs via PrimeReact internal selectors
+.effect-control .p-knob {
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.6));
+}

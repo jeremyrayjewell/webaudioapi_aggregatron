@@ -25,7 +25,7 @@ export const ReverbControl = ({ reverbLevel, setReverbLevel, reverbDecay, setRev
           onChange={(e) => handleReverbLevelChange(e.value)}
           size={40}
         />
-        Reverb Level
+  reverb level
       </label>
       <label>
         <img src={decayIcon} alt="Reverb Decay" className="oscillator-icon" />
@@ -37,7 +37,7 @@ export const ReverbControl = ({ reverbLevel, setReverbLevel, reverbDecay, setRev
           onChange={(e) => handleReverbDecayChange(e.value)}
           size={40}
         />
-        Reverb Decay
+  reverb decay
       </label>
     </div>
   );
