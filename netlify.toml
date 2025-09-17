@@ -1,4 +1,7 @@
-[build] base = "synth_aggregatrex5000" command = "npm install && npm run build" publish = "build"
+[build]
+base = "synth_aggregatrex5000"
+command = "npm install && npm run build"
+publish = "build"
 
 [build.environment] NODE_VERSION = "18"
 
