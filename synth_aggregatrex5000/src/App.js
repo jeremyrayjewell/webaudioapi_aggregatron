@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Keyboard } from './keyboard/Keyboard';
 import './App.scss';
 import { ControlPanel } from './synth/controlPanel';
@@ -11,6 +11,24 @@ import MobilePan from './components/MobilePan';
 import StartOverlay from './components/StartOverlay';
 
 function App() {
+  // Lock screen orientation to portrait on mobile
+  useEffect(() => {
+    const lockOrientation = async () => {
+      try {
+        // Check if we're on a mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        
+        if (isMobile && window.screen.orientation && window.screen.orientation.lock) {
+          await window.screen.orientation.lock('portrait-primary');
+        }
+      } catch (error) {
+        // Orientation lock may not be supported or allowed
+        console.log('Screen orientation lock not supported or allowed:', error);
+      }
+    };
+
+    lockOrientation();
+  }, []);
   const [activeNotes, setActiveNotes] = useState({});
   const [oscillatorType, setOscillatorType] = useState('sawtooth');
   const [adsr, setADSR] = useState({ attack: 0.1, decay: 0.1, sustain: 0.7, release: 0.1 });
