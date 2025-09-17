@@ -1,0 +1,36 @@
+[build]
+command = "npm install && npm run build"
+publish = "build"
+
+[build.environment]
+NODE_VERSION = "18"
+
+[[redirects]]
+from = "/**"
+to = "/index.html"
+status = 200
+
+# Guidance:
+# - In Netlify UI for this site: set Base directory = synth_aggregatrex5000 (exact spelling).
+# - Publish directory = build (Netlify will look inside the base after running command).
+# - Remove any previous wrong base (like synth_aggregatrex500).
+# - This redirect block is optional if you only serve the root path.[build]
+# No 'base' here because this file sits at the project root (the subfolder you want to build).
+command = "npm install && npm run build"
+publish = "build"
+
+[build.environment]
+# Pin a Node version compatible with CRA/react-scripts if needed.
+NODE_VERSION = "18"
+
+[[redirects]]
+# SPA fallback (only needed if you have client-side routes beyond /).
+from = "/**"
+to = "/index.html"
+status = 200
+
+# Notes:
+# 1. In the Netlify UI make sure the Base directory is either blank (if this site is created directly from this subfolder repo path)
+#    OR explicitly set to 'synth_aggregatrex5000' (spelled exactly) if the repo root is used.
+# 2. The previous failure was caused by a typo: 'synth_aggregatrex500' (missing the last '0').
+# 3. After correcting, trigger a new deploy; Netlify will run the command above and publish the './build' folder.
