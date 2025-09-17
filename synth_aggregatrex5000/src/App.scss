@@ -1,10 +1,31 @@
+/* Scalable instrument container (for proportional resizing) */
+.instrument {
+  /* Baseline instrument dimensions for scaling */
+  --design-width: 900px;   /* reduce baseline to allow larger scale on phones */
+  --design-height: 520px;  /* approximate height of panel+keys */
+  width: var(--design-width);
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center panel and keyboard horizontally */
+  gap: 1rem;
+}
+
+/* Scaled inner content; used in portrait to scale by height */
+.instrument-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
 // my-app/src/App.scss
 html, body {
   margin: 0;
   padding: 0;
-  overflow: hidden; 
-  height: 100%; 
-  display: grid;
+  height: 100%;
+  /* Allow page to scroll when content overflows; avoid horizontal scrollbars */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .App {
@@ -26,6 +47,44 @@ html, body {
   justify-content: center; /* vertical centering */
   gap: 2rem;
   box-sizing: border-box;
+}
+
+/* Expand background horizontally on smaller non-mobile screens */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .App {
+    background-size: 90vw 100vh;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1000px) {
+  .App {
+    background-size: 95vw 100vh;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 900px) {
+  .App {
+    background-size: 100vw 100vh;
+  }
+}
+
+/* Splash (audio not started) */
+.splash-button {
+  padding: 0.875rem 1.25rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* Start overlay centered above rotated app */
+.start-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: auto;
+  background: rgba(0,0,0,0.35);
 }
 
 .control-panel-container {
@@ -53,4 +112,119 @@ html, body {
 h3 {
   margin-bottom: 1rem;
   font-size: 1.5rem;
+}
+
+/* Force horizontal layout when device is in portrait (mobile) */
+@media (orientation: portrait) and (max-width: 900px) {
+  html, body { overflow: hidden; }
+
+  .App {
+  /* Fine-tune horizontal centering; positive moves right */
+  --center-x-adjust: 12px;
+  /* Swap axes for the rotated canvas using dynamic viewport units */
+  width: 100dvh;
+  height: 100dvw; /* fill visible view height */
+  /* Pin the canvas to viewport */
+  position: fixed;
+  inset: 0;
+    transform-origin: top left;
+    transform: rotate(-90deg) translateX(-100%);
+    /* Background behavior on mobile */
+    background-attachment: scroll;
+    background-size: cover;
+    background-position: center center;
+    /* Center children within rotated canvas */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  padding: 0;
+  overflow: hidden; /* clip to viewport height */
+  }
+
+  .instrument {
+  /* Match container width to scaled content width (uses 100dvw in inner scale) */
+  width: calc((var(--design-width) / var(--design-height)) * 100dvw);
+  height: 100dvw;
+    aspect-ratio: var(--design-width) / var(--design-height);
+  display: block;
+  position: relative; /* enable absolute centering of inner */
+    overflow: visible;
+    /* Center within rail by default via rail scroll */
+  }
+
+  .instrument-inner {
+    /* Scale inner content by height so it fits viewport height and center it absolutely */
+  --scale-h: calc(100dvw / var(--design-height));
+    position: absolute;
+  left: calc(50% + var(--center-x-adjust, 0px));
+  top: calc(50% + var(--center-y-adjust, 0px));
+    transform: translate(-50%, -50%) scale(var(--scale-h));
+    transform-origin: center center;
+    width: var(--design-width);
+    height: var(--design-height);
+  }
+
+  /* Center the scaled inner content inside the wider instrument */
+  .instrument-center {
+    width: 100%;
+    height: 100%;
+    position: relative; /* container for absolute-centered inner */
+  }
+
+  /* Horizontal pan rail: fixed-height viewport area matching rotated canvas */
+  .instrument-rail {
+    position: relative;
+    display: block; /* avoid flex affecting scroll math */
+    width: 100%;
+    height: 100%;
+  overflow-x: auto; /* native horizontal scroll when instrument overflows */
+  overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  touch-action: none; /* let JS manage gestures for reliability across browsers */
+  scroll-snap-type: x mandatory;
+  scrollbar-gutter: stable both-edges;
+  }
+
+  .instrument-pan {
+    position: relative;
+    display: block;
+    width: max-content; /* ensure content width defines scrollable area */
+    margin-left: auto; /* center when underflow */
+    margin-right: auto;
+  }
+
+  .instrument {
+    scroll-snap-align: center;
+  }
+
+  /* Make the overlay full-screen and center content; rotate the button only */
+  .start-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100dvw;
+    height: 100dvh;
+    display: grid;
+    place-items: center;
+    transform: none !important;
+  }
+  .start-overlay .splash-button {
+    transform: none;
+    transform-origin: center center;
+  }
+}
+
+/* Mobile adjustments - add top offset and center horizontally */
+@media (max-width: 768px) {
+  .App {
+    background-position: center -15px;
+  }
+  .instrument {
+    margin-top: 55px;
+    margin-left: auto;
+    margin-right: auto;
+    gap: 0;
+  }
+  .control-panel-container {
+    margin-bottom: -10px;
+  }
 }

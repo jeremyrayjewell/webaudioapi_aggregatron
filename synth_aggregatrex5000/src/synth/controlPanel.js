@@ -21,7 +21,7 @@ export const ControlPanel = ({
     reverbDecay, setReverbDecay,
 }) => {
     const { analyser, nodes } = useContext(AudioContextContext);
-    const filterNode = nodes.filter;  // No need for state or effects for filterNode
+    const filterNode = nodes?.filter || null;  // Guard when audio graph not initialized
 
     const [filterType, setFilterType] = useState('lowpass');
     const [cutoff, setCutoff] = useState(20000);

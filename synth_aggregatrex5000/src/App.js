@@ -7,6 +7,8 @@ import { AudioContextProvider, AudioContextContext } from './contexts/AudioConte
 import 'primereact/resources/themes/saga-green/theme.css';
 import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
+import MobilePan from './components/MobilePan';
+import StartOverlay from './components/StartOverlay';
 
 function App() {
   const [activeNotes, setActiveNotes] = useState({});
@@ -19,51 +21,51 @@ function App() {
 
   const { audioContext, analyser, startAudio, initError, attemptedAutoInit } = useContext(AudioContextContext);
 
-  if (!audioContext || !analyser) {
-    return (
-      <div className="App" style={{ justifyContent: 'center' }}>
-        <h2>Audio Engine Not Started</h2>
-        {initError && <p style={{ color: 'salmon' }}>Init issue: {initError}</p>}
-        <button onClick={startAudio} style={{ padding: '0.75rem 1.25rem', fontSize: '1rem', cursor: 'pointer' }}>
-          {attemptedAutoInit ? 'Enable Audio' : 'Start Audio'}
-        </button>
-        <p style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '1rem' }}>
-          Your browser may require a user gesture (click / key press) to start Web Audio.
-        </p>
-      </div>
-    );
-  }
+  // Always render app; show overlay button when audio isn't started
 
   console.log('AudioContext and Analyser ready:', { audioContext, analyser });
 
   return (
     <div className="App">
-      <div className="control-panel-container">
-        <ControlPanel
-          setOscillatorType={setOscillatorType}
-          adsr={adsr}
-          setADSR={setADSR}
-          lfo={lfo}
-          setLFO={setLFO}
-          amplitude={amplitude}
-          setAmplitude={setAmplitude}
-          reverbLevel={reverbLevel}
-          setReverbLevel={setReverbLevel}
-          reverbDecay={reverbDecay}
-          setReverbDecay={setReverbDecay}
-        />
-      </div>
+  <StartOverlay
+        visible={!audioContext || !analyser}
+        label={attemptedAutoInit ? 'Enable Audio' : 'Start Audio'}
+        onStart={startAudio}
+      />
+  <MobilePan key={audioContext ? 'audio-on' : 'audio-off'}>
+        <div className="instrument">
+          <div className="instrument-center">
+            <div className="instrument-inner">
+            <div className="control-panel-container">
+              <ControlPanel
+                setOscillatorType={setOscillatorType}
+                adsr={adsr}
+                setADSR={setADSR}
+                lfo={lfo}
+                setLFO={setLFO}
+                amplitude={amplitude}
+                setAmplitude={setAmplitude}
+                reverbLevel={reverbLevel}
+                setReverbLevel={setReverbLevel}
+                reverbDecay={reverbDecay}
+                setReverbDecay={setReverbDecay}
+              />
+            </div>
 
-      <div className="keyboard-container">
-        <Keyboard
-          activeNotes={activeNotes}
-          setActiveNotes={setActiveNotes}
-          oscillatorType={oscillatorType}
-          adsr={adsr}
-          lfo={lfo}
-          amplitude={amplitude}
-        />
-      </div>
+            <div className="keyboard-container">
+              <Keyboard
+                activeNotes={activeNotes}
+                setActiveNotes={setActiveNotes}
+                oscillatorType={oscillatorType}
+                adsr={adsr}
+                lfo={lfo}
+                amplitude={amplitude}
+              />
+            </div>
+            </div>
+          </div>
+        </div>
+      </MobilePan>
     </div>
   );
 }

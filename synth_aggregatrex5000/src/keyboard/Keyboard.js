@@ -106,7 +106,19 @@ export const Keyboard = React.memo((props) => {
     let cancelled = false;
     const handleMIDIMessage = ({ data }) => {
       const [status, note, velocity] = data;
-      const freq = parseFloat(midiNoteToFrequency(note).toFixed(2));
+      let freq = parseFloat(midiNoteToFrequency(note).toFixed(2));
+      
+      // Find the closest matching frequency from our keys array
+      const keyFreqs = keys.map(key => key.freq);
+      const closestFreq = keyFreqs.reduce((prev, curr) => 
+        Math.abs(curr - freq) < Math.abs(prev - freq) ? curr : prev
+      );
+      
+      // Use the closest frequency if it's within a reasonable tolerance (1 Hz)
+      if (Math.abs(closestFreq - freq) < 1) {
+        freq = closestFreq;
+      }
+      
       const cmd = status & 0xf0;
       if (cmd === 0x90) { // Note On (or Note Off if vel 0)
         if (velocity > 0) {
@@ -157,34 +169,64 @@ export const Keyboard = React.memo((props) => {
     };
   }, [activeKeys, handleNoteStart, handleNoteStop]);
 
-  // Mouse event handling on the visual keyboard
-  const handleMouseDown = (freq) => {
+  // Mouse and Touch event handling on the visual keyboard
+  const handlePointerDown = (freq) => {
     setIsMouseDown(true);
     handleNoteStart(freq);
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = () => {
     setIsMouseDown(false);
     activeFreqs.forEach((freq) => handleNoteStop(freq));
   };
 
-  const handleMouseEnter = (freq) => {
+  const handlePointerEnter = (freq) => {
     if (isMouseDown && !activeFreqs.has(parseFloat(freq))) {
       handleNoteStart(freq);
     }
   };
 
-  const handleMouseLeave = (freq) => {
+  const handlePointerLeave = (freq) => {
     if (isMouseDown && activeFreqs.has(parseFloat(freq))) {
       handleNoteStop(freq);
     }
   };
 
-  const handleMouseMove = (e) => {
+  const handlePointerMove = (e) => {
     if (!isMouseDown) return;
     const keyElement = e.target;
     const keyFreq = keyElement.dataset.freq;
     if (keyFreq && !activeFreqs.has(parseFloat(keyFreq))) {
+      handleNoteStart(keyFreq);
+    }
+  };
+
+  // Touch-specific handlers for better mobile support
+  const handleTouchStart = (e, freq) => {
+    e.preventDefault();
+    handlePointerDown(freq);
+  };
+
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    handlePointerUp();
+  };
+
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    if (!isMouseDown) return;
+    
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const keyFreq = element?.dataset?.freq;
+    
+    if (keyFreq && !activeFreqs.has(parseFloat(keyFreq))) {
+      // Stop previous notes that are no longer being touched
+      activeFreqs.forEach((freq) => {
+        if (freq !== parseFloat(keyFreq)) {
+          handleNoteStop(freq);
+        }
+      });
       handleNoteStart(keyFreq);
     }
   };
@@ -208,16 +250,23 @@ export const Keyboard = React.memo((props) => {
   };
 
   return (
-    <div className="keyboard" onMouseMove={handleMouseMove}>
+    <div 
+      className="keyboard" 
+      onMouseMove={handlePointerMove}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {keys.map((btn, idx) => (
         <div
           key={idx}
           className={getKeyClasses(btn)}
           data-freq={btn.freq}
-          onMouseDown={() => handleMouseDown(btn.freq)}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={() => handleMouseLeave(btn.freq)}
-          onMouseEnter={() => handleMouseEnter(btn.freq)}
+          onMouseDown={() => handlePointerDown(btn.freq)}
+          onMouseUp={handlePointerUp}
+          onMouseLeave={() => handlePointerLeave(btn.freq)}
+          onMouseEnter={() => handlePointerEnter(btn.freq)}
+          onTouchStart={(e) => handleTouchStart(e, btn.freq)}
+          style={{ touchAction: 'none' }}
         >
           {btn.label}
         </div>

@@ -1,6 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import Keyboard3D from '../components/Keyboard3D';
+import Keyboard3D      <group position={isMobile ? [0, -0.5, -17.5] : [12, 1, -17.5]}>
+        <EffectsPanel />
+      </group>
+      
+      {/* Keyboard - uniform distance */}
+      <group position={isMobile ? [0, -1.5, -12.0] : [0, -2, -12.0]}>
+        <Keyboard3D
+          startNote={36}
+          endNote={96}
+          onNoteOn={handleNoteOn}
+          onNoteOff={handleNoteOff}omponents/Keyboard3D';
 import Panel from '../components/Panel';
 import Knob from '../components/Knob';
 import FilterPanel from '../components/FilterPanel';
@@ -20,6 +30,16 @@ const SceneManager = ({ activeNotes, onNoteOn, onNoteOff }) => {
   const [filterType, setFilterType] = useState(synthParams?.filter?.type || 'lowpass');
   const [filterFreq, setFilterFreq] = useState(synthParams?.filter?.frequency || 2000);
   const [filterQ, setFilterQ] = useState(synthParams?.filter?.Q || 1);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (groupRef.current) {
@@ -39,7 +59,7 @@ const SceneManager = ({ activeNotes, onNoteOn, onNoteOff }) => {
       onNoteOff(note);
     }
   }, [onNoteOff]);  return (    <group ref={groupRef}>
-      {/* Primary Panel - slightly set back */}      <group position={[0, 1, -18.0]}>
+      {/* Primary Panel - slightly set back */}      <group position={isMobile ? [0, -0.5, -18.0] : [0, 1, -18.0]}>
         <Panel
           width={28}
           height={4.5}
@@ -127,16 +147,16 @@ const SceneManager = ({ activeNotes, onNoteOn, onNoteOff }) => {
               }}
             />
           </group></Panel>      </group>      {/* Effects Panel - uniform distance */}
-      <group position={[12, 1, -17.5]}>
+      <group position={isMobile ? [0, -0.5, -17.5] : [12, 1, -17.5]}>
         <EffectsPanel />
       </group>
       
       {/* Keyboard - uniform distance */}
-      <group position={[0, -2, -12.0]}>
+      <group position={isMobile ? [0, -2.5, -12.0] : [0, -2, -12.0]}>
         <Keyboard3D
           startNote={36}
           endNote={96}
-          onNoteOn={handleNoteOn}
+          onNoteOn={handleNoteOff}
           onNoteOff={handleNoteOff}
           activeNotes={activeNotes || new Set()}
         />
