@@ -3,6 +3,7 @@ base = "synth_aggregatrex5000"
 command = "npm install && npm run build"
 publish = "build"
 
-[build.environment] NODE_VERSION = "18"
+[build.environment]
+NODE_VERSION = "18"
 
 [[redirects]] from = "/**" to = "/index.html" status = 200
