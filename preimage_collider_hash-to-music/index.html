@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Preimage::Collision — Hash → Musical Suggestions + C4 WAV</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap main-content">
+  <h1>Preimage::Collision</h1>
+  <p class="small">Deterministic musical suggestions from a hash digest with Web Audio rendering of hash-derived samples in C4.</p>
+
+  <div class="panel">
+    <div class="grid g3">
+      <div>
+        <label for="algo">Algorithm</label>
+        <select id="algo">
+          <option>SHA-1</option>
+          <option selected>SHA-256</option>
+          <option>SHA-384</option>
+          <option>SHA-512</option>
+          <option>MD5</option>
+          <option>BLAKE2b</option>
+          <option>BLAKE2s</option>
+          <option>SHA3-256</option>
+          <option>SHA3-384</option>
+          <option>SHA3-512</option>
+          <option>RIPEMD-160</option>
+          <option>RIPEMD-128</option>
+          <option>RIPEMD-256</option>
+          <option>RIPEMD-320</option>
+          <option>Whirlpool</option>
+          <option>Tiger</option>
+          <option>SHA224</option>
+          <option>SHA512/224</option>
+          <option>SHA512/256</option>
+          <option>SHAKE128</option>
+          <option>SHAKE256</option>
+          <option>KECCAK-256</option>
+          <option>KECCAK-512</option>
+          <option>SM3</option>
+          <option>GOST-256</option>
+          <option>CRC32</option>
+          <option>xxHash32</option>
+          <option>xxHash64</option>
+          <option>MurmurHash3</option>
+          <option>CityHash64</option>
+        </select>
+      </div>
+      <div>
+        <label for="input">Preimage (text)</label>
+        <input id="input" type="text" value="JRJ ENTERPRISES" />
+      </div>
+      <div>
+        <label for="len">Preview steps</label>
+        <select id="len">
+          <option value="16">16</option>
+          <option value="32" selected>32</option>
+          <option value="64">64</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid g3" style="margin-top:10px">
+      <div>
+        <label for="keymode">Root/Scale mode</label>
+        <select id="keymode">
+          <option selected>Auto (hash-derived)</option>
+          <option>Manual</option>
+        </select>
+      </div>
+      <div id="manualRootBox" class="hide">
+        <label for="root">Root (manual)</label>
+        <select id="root">
+          <option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option>
+          <option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+        </select>
+      </div>
+      <div id="manualScaleBox" class="hide">
+        <label for="scale">Scale (manual)</label>
+        <select id="scale">
+          <!-- Western Traditional -->
+          <option value="minorPent" selected>Minor Pentatonic</option>
+          <option value="naturalMinor">Natural Minor</option>
+          <option value="phrygian">Phrygian</option>
+          <option value="dorian">Dorian</option>
+          <option value="mixolydian">Mixolydian</option>
+          <option value="major">Major</option>
+          <option value="lydian">Lydian</option>
+          <option value="locrian">Locrian</option>
+          
+          <!-- Additional Western -->
+          <option value="majorPent">Major Pentatonic</option>
+          <option value="bluesMajor">Blues Major</option>
+          <option value="bluesMinor">Blues Minor</option>
+          <option value="harmMinor">Harmonic Minor</option>
+          <option value="melMinorAsc">Melodic Minor (Ascending)</option>
+          <option value="chromatic">Chromatic</option>
+          <option value="wholeTone">Whole Tone</option>
+          <option value="diminished">Diminished</option>
+          <option value="augmented">Augmented</option>
+          
+          <!-- Jazz -->
+          <option value="bebop">Bebop</option>
+          <option value="alteredDom">Altered Dominant</option>
+          <option value="lydianDom">Lydian Dominant</option>
+          <option value="halfWholeDim">Half-Whole Diminished</option>
+          <option value="wholeHalfDim">Whole-Half Diminished</option>
+          
+          <!-- Arabic/Middle Eastern Maqams -->
+          <option value="hijaz">Hijaz</option>
+          <option value="hijazKar">Hijaz Kar</option>
+          <option value="saba">Saba</option>
+          <option value="kurd">Kurd</option>
+          <option value="bayati">Bayati</option>
+          <option value="rast">Rast</option>
+          <option value="nahawand">Nahawand</option>
+          <option value="ajam">Ajam</option>
+          <option value="sikah">Sikah</option>
+          <option value="huzam">Huzam</option>
+          
+          <!-- Indian Classical Ragas -->
+          <option value="kalyan">Kalyan (Yaman)</option>
+          <option value="bilawal">Bilawal</option>
+          <option value="khamaj">Khamaj</option>
+          <option value="bhairav">Bhairav</option>
+          <option value="poorvi">Poorvi</option>
+          <option value="marwa">Marwa</option>
+          <option value="kafi">Kafi</option>
+          <option value="asavari">Asavari</option>
+          <option value="bhairavi">Bhairavi</option>
+          <option value="todi">Todi</option>
+          <option value="malkauns">Malkauns</option>
+          <option value="yaman">Yaman</option>
+          
+          <!-- Chinese -->
+          <option value="chineseTraditional">Chinese Traditional</option>
+          <option value="chineseGong">Chinese Gong</option>
+          <option value="chineseShang">Chinese Shang</option>
+          <option value="chineseJiao">Chinese Jiao</option>
+          <option value="chineseZhi">Chinese Zhi</option>
+          <option value="chineseYu">Chinese Yu</option>
+          
+          <!-- Japanese -->
+          <option value="hirajoshi">Hirajoshi</option>
+          <option value="inScale">In Scale</option>
+          <option value="iwato">Iwato</option>
+          <option value="kumoi">Kumoi</option>
+          <option value="pelog">Pelog</option>
+          
+          <!-- Indonesian/Gamelan -->
+          <option value="slendro">Slendro</option>
+          <option value="pelogBarang">Pelog Barang</option>
+          <option value="pelogBem">Pelog Bem</option>
+          
+          <!-- Hungarian/Romani -->
+          <option value="hungarian">Hungarian</option>
+          <option value="hungarianGypsy">Hungarian Gypsy</option>
+          <option value="romanianMinor">Romanian Minor</option>
+          
+          <!-- Spanish/Flamenco -->
+          <option value="spanish">Spanish (Phrygian Dominant)</option>
+          <option value="flamenco">Flamenco</option>
+          
+          <!-- Synthetic/Modern -->
+          <option value="prometheus">Prometheus</option>
+          <option value="tritone">Tritone</option>
+          <option value="enigmatic">Enigmatic</option>
+          <option value="doubleHarm">Double Harmonic</option>
+          <option value="neapolitan">Neapolitan</option>
+          <option value="persian">Persian</option>
+          
+          <!-- Hexatonic -->
+          <option value="bluesHex">Blues Hexatonic</option>
+          <option value="wholeToneHex">Whole Tone Hexatonic</option>
+          <option value="augmentedHex">Augmented Hexatonic</option>
+          
+          <!-- Octatonic -->
+          <option value="octatonic1">Octatonic (Type 1)</option>
+          <option value="octatonic2">Octatonic (Type 2)</option>
+          
+          <!-- Folk/Traditional -->
+          <option value="pentatonicMajor">Pentatonic Major</option>
+          <option value="pentatonicMinor">Pentatonic Minor</option>
+          <option value="hexMajor">Hexatonic Major</option>
+          <option value="hexMinor">Hexatonic Minor</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="go">Generate</button>
+      <button class="btn" id="download" disabled>Download Text Report</button>
+    </div>
+  </div>
+
+  <div class="panel" id="digestPanel" hidden>
+    <h2>Digest</h2>
+    <div class="mono"><span class="pill" id="outAlgo"></span><span class="pill" id="outLen"></span></div>
+    <div id="outHex" class="mono" style="margin-top:8px"></div>
+  </div>
+
+  <div class="panel" id="suggestPanel" hidden>
+    <h2>Musical Suggestions</h2>
+    <div id="outExplain"></div>
+    <div class="hr"></div>
+    <h2>Example Lines (first N steps)</h2>
+    <div id="outLines" class="jsonpre mono"></div>
+
+    <!-- Explanation: how variables are derived from the hash/digest -->
+    <details id="derivationExplain" style="margin-top:14px;">
+      <summary style="cursor:pointer; font-weight:700; color:var(--sub); font-size:13px;">How variables are derived</summary>
+      <div style="margin-top:8px; color:var(--fg); font-size:14px;">
+        <p><strong>Overview</strong> — The application deterministically maps pieces of the hex digest into musical parameters. Different bytes and nibbles control different aspects (tempo, key, scale, instruments, drum patterns and velocities). The same input and algorithm will always produce the same suggestions.</p>
+
+        <p><strong>Tempo</strong> — Suggested tempo is based on digest length: short digests → faster tempos, longer digests → slower tempos. This gives shorter hashes a quicker, loop-like feel and longer digests a more spacious tempo.</p>
+
+        <p><strong>Key / Root</strong> — The root note is derived by folding a few representative bytes (first, middle, last) and mapping the result into a circle-of-fifths table. This biases roots toward musically useful tonal centers while still depending on the digest bits.</p>
+
+        <p><strong>Scale</strong> — Scale selection mixes the digest "brightness" (average nibble value) with byte-derived offsets to pick a scale from a pre-defined list (major, minor, modal, pentatonic, maqams, ragas, etc.). Brighter digests tend to choose "brighter" scales.</p>
+
+        <p><strong>Instruments & Timbres</strong> — Specific bytes (early bytes in the digest) select instrument families and timbral presets: e.g., kit type (acoustic/electronic/glitch), bass wave shape, lead timbre and solo characteristics. Small changes in those bytes will yield different synth waveforms, envelopes and effects (reverb/delay).</p>
+
+        <p><strong>Velocities</strong> — Velocity is computed from adjacent hex characters (pairs of nibbles). These pairs are scaled into a 0–1 range and binned into marks like pp/p/mf/f/ff. The example lines show those marks; the volume key gives approximate percentages.</p>
+
+        <p><strong>Drum patterns</strong> — Drum patterns are generated by splitting the digest into sections and using bits/nibbles to decide hits on a 16-step grid. The first half of the digest controls Pattern A and the second half controls Pattern B; bit masks create variation while preserving rhythmic logic (downbeats/backbeats/fills).</p>
+
+        <p><strong>Hats mask</strong> — The hi-hat mask is taken from a specific byte and used as an 8-bit pattern; each set bit becomes a hat hit in that position, giving deterministic syncopation from the digest bits.</p>
+
+        <p><strong>Melody mapping</strong> — Letters and digits in the hex digest are mapped to different voices: digits tend to generate bass notes, letters generate lead notes. Mapping functions place values into the chosen scale's pool (across several octaves), with phrasing decided by small phrase sums and rests derived from hash arithmetic.</p>
+
+        <p><strong>Phrasing & Rests</strong> — The solo melody is phrase-based (for example, 4-step phrases). The generator sums small sections of the digest to decide whether each phrase is active, and certain two-hex-character combinations produce rests to create natural-sounding gaps.</p>
+
+        <p><strong>WAV Audio Synthesis</strong> — The "Render" buttons create actual audio samples using Web Audio API's OfflineAudioContext. Each instrument (bass, lead, solo) uses hash-derived parameters to configure oscillators, filters, envelopes, and effects. For example: bass waveform (sine/triangle/square/saw) from byte 1, filter cutoff frequency from byte 2, envelope shape from specific nibbles. The solo instrument adds modulation (vibrato/tremolo/FM) and delay based on additional hash bytes. Drum samples use similar synthesis with noise generators and filters tuned by kit type and character bytes.</p>
+
+        <p><strong>Deterministic Audio</strong> — All synthesis parameters come directly from the digest bytes, so the same hash always produces identical WAV files. The C4 samples are rendered at 44.1kHz with fade-in/out to avoid clicks, then encoded as downloadable WAV blobs. Each instrument gets 2-3 seconds of audio to showcase its hash-derived timbre and envelope characteristics.</p>
+
+        <p><strong>Why multiple algorithms/scales matter</strong> — Choosing a different hash algorithm or scale changes which bits are where and how they map into parameters; the UI exposes many algorithms and scales so you can explore a wide palette of musical impressions from the same input text.</p>
+
+        <p style="margin-top:8px">The debug panel below shows the exact bytes/nibbles used for each decision for the last generated digest (helpful for tuning and learning how small changes affect the music).</p>
+      </div>
+    </details>
+    
+    <!-- Debug panel: shows last digest bytes/nibbles used for decisions -->
+    <details id="debugPanel" style="margin-top:12px;" hidden>
+      <summary style="cursor:pointer; font-weight:700; color:var(--sub); font-size:13px;">Last digest debug (show bytes/nibbles used)</summary>
+      <pre id="debugContent" class="mono jsonpre" style="margin-top:8px; color:var(--fg); font-size:13px; white-space:pre-wrap;"></pre>
+    </details>
+  </div>
+
+  <div class="panel" id="audioPanel" hidden>
+    <h2>Render Hash-Derived Audio Samples</h2>
+    
+    <div style="margin-bottom: 16px;">
+      <h3 style="margin: 8px 0; color: var(--sub); font-size: 16px;">Melodic Instruments</h3>
+      <div class="row">
+        <button class="btn" id="renderAll">Render Melodic Instruments (C4)</button>
+        <span id="renderStatus" class="small"></span>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <a id="bassLink" class="dl hide" download="Bass_C4.wav">⬇ Download Bass_C4.wav</a>
+        <a id="leadLink" class="dl hide" download="Lead_C4.wav">⬇ Download Lead_C4.wav</a>
+        <a id="soloLink" class="dl hide" download="Solo_C4.wav">⬇ Download Solo_C4.wav</a>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="margin: 8px 0; color: var(--sub); font-size: 16px;">Drum Kit</h3>
+      <div class="row">
+        <button class="btn" id="renderDrums">Render Drum Kit</button>
+        <span id="drumStatus" class="small"></span>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <a id="kickLink" class="dl hide" download="Kick.wav">⬇ Download Kick.wav</a>
+        <a id="snareLink" class="dl hide" download="Snare.wav">⬇ Download Snare.wav</a>
+        <a id="hihatLink" class="dl hide" download="HiHat.wav">⬇ Download HiHat.wav</a>
+      </div>
+    </div>
+
+    <!-- Technical explanation of exact WAV synthesis -->
+    <details style="margin-top: 16px;">
+      <summary style="cursor: pointer; font-weight: 700; color: var(--sub); font-size:13px;">Exact WAV Synthesis Mapping</summary>
+      <div style="margin-top: 8px; color: var(--fg); font-size: 14px;">
+        <p><strong>Bass Instrument (C4 @ 261.6 Hz):</strong></p>
+        <ul style="margin: 4px 0 12px 20px;">
+          <li><strong>Byte 1 (hex pair 2-3)</strong> → Waveform: &lt;64=sine, 64-127=triangle, 128-191=square, ≥192=sawtooth</li>
+          <li><strong>Byte 2 (hex pair 4-5)</strong> → LPF Cutoff: 60 + (2000-60) × (byte/255) Hz</li>
+          <li><strong>Nibble 4 (hex char 5)</strong> → Envelope: contains letter (a-f) = plucky (attack=5ms, decay=200ms, sustain=15%), else sustain (attack=10ms, decay=400ms, sustain=70%)</li>
+          <li><strong>Filter Q:</strong> plucky=0.4, sustain=0.2</li>
+        </ul>
+        
+        <p><strong>Lead Instrument (C4 @ 261.6 Hz):</strong></p>
+        <ul style="margin: 4px 0 12px 20px;">
+          <li><strong>Nibble 5 (hex char 6)</strong> → Timbre: 0-3=mellow(triangle), 4-7=synth(sawtooth), 8-11=driven(sawtooth+distortion), 12-15=airy(sine)</li>
+          <li><strong>Nibble 6 (hex char 7)</strong> → Envelope: ≤7=staccato (attack=5ms, decay=150ms, sustain=30%), else swell (attack=250ms, decay=400ms, sustain=80%)</li>
+          <li><strong>Nibble 7 (hex char 8)</strong> → Glide: (nibble/15) × 200ms portamento (ignored for single C4)</li>
+          <li><strong>Byte 3 (hex pair 6-7)</strong> → Reverb: 0.10 + 0.50 × (byte/255) wet mix</li>
+          <li><strong>Driven distortion:</strong> tanh(2.5x) waveshaping when timbre=driven</li>
+        </ul>
+        
+        <p><strong>Solo Instrument (C4 @ 261.6 Hz):</strong></p>
+        <ul style="margin: 4px 0 12px 20px;">
+          <li><strong>Byte 4 (hex pair 8-9)</strong> → Character: &lt;64=melodic, 64-127=percussive, 128-191=ambient, ≥192=aggressive</li>
+          <li><strong>Byte 5 (hex pair 10-11)</strong> → Waveform: &lt;64=sine, 64-127=triangle, 128-191=sawtooth, ≥192=square</li>
+          <li><strong>Byte 6 (hex pair 12-13)</strong> → Modulation: &lt;64=none, 64-127=vibrato(5.5Hz, depth=8), 128-191=tremolo(7Hz, depth=0.3), ≥192=FM(ratio=2.1, index=200)</li>
+          <li><strong>Byte 7 (hex pair 14-15)</strong> → Delay: 0.05 + 0.45 × (byte/255) seconds, feedback=0.3, wet=0.4</li>
+          <li><strong>Character envelopes:</strong> melodic(100ms attack), percussive(10ms attack), ambient(800ms attack), aggressive(20ms attack + tanh(4x) distortion)</li>
+        </ul>
+        
+        <p><strong>Drum Synthesis:</strong></p>
+        <ul style="margin: 4px 0 8px 20px;">
+          <li><strong>Kick:</strong> Sine/triangle oscillator, pitch envelope (2×base→base freq), amp envelope, LPF. Base freq: acoustic=50Hz, electronic=65Hz, glitch=45Hz</li>
+          <li><strong>Snare:</strong> Triangle oscillator + white noise, HPF + LPF. Dry: 200Hz tone, 300Hz HPF, 4kHz LPF. Bright: 250Hz tone, 500Hz HPF, 8kHz LPF</li>
+          <li><strong>HiHat:</strong> White noise through HPF + LPF. Acoustic: 8-12kHz. Electronic: 10-15kHz. Glitch: 6-18kHz with Q=2.0</li>
+        </ul>
+        
+        <p><strong>All WAVs:</strong> 44.1kHz, 16-bit PCM, 512-sample fade in/out, encoded as downloadable .wav blobs</p>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="wrap footer-wrap">
+  <footer style="display: flex; justify-content: flex-end; align-items: flex-end; padding: 20px 0; margin-top: 40px; gap: 2px;">
+    <div style="text-align: right;">
+      <div style="color: var(--acc); font-family: 'Input Sans Condensed', system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; font-size: 12px; line-height: 0.4; opacity: 0.7;">Built by JRJ, 2025</div>
+      <a href="https://aggregatron.neocities.org/" style="color: var(--acc); font-family: 'Input Sans Condensed', system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; font-size: 12px; text-decoration: none; line-height: 0.4; opacity: 0.7;">Aggregatron Records</a>
+    </div>
+    <img src="assets/logofooter.png" alt="Logo" style="max-width: 80px; height: auto; opacity: 0.8;">
+  </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
