@@ -1,15 +1,31 @@
 [build]
 command = """
-# Build synth_aggregatrex5000
+# Build React apps
 echo "Building synth_aggregatrex5000..." &&
 cd synth_aggregatrex5000 && npm ci && npm run build && cd .. &&
 echo "synth_aggregatrex5000 build complete" &&
 
-# Create dist structure with just working project for now
+echo "Building synth_aggregatrex6000..." &&
+cd synth_aggregatrex6000 && npm ci && NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" npm run build && cd .. &&
+echo "synth_aggregatrex6000 build complete" &&
+
+echo "Building melodymaker_ordnung..." &&
+cd melodymaker_ordnung && npm ci && npm run build && cd .. &&
+echo "melodymaker_ordnung build complete" &&
+
+echo "Building samplesegmenter_piecework..." &&
+cd samplesegmenter_piecework && npm ci && npm run build && cd .. &&
+echo "samplesegmenter_piecework build complete" &&
+
+# Create dist structure and copy all projects
 echo "Creating dist structure..." &&
 mkdir -p dist &&
 cp -r synth_aggregatrex5000/build dist/synth_aggregatrex5000 &&
-echo '<html><head><title>WebAudio API Aggregatron</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:50px auto;padding:20px;background:#1a1a1a;color:#fff}h1{color:#e91e63;text-align:center}ul{list-style:none;padding:0}li{margin:15px 0}a{color:#03dac6;text-decoration:none;font-size:18px;display:block;padding:15px;background:#333;border-radius:8px;transition:background 0.3s}a:hover{background:#555}</style></head><body><h1>WebAudio API Projects</h1><ul><li><a href="/synth_aggregatrex5000/">🎹 Synth Aggregatrex 5000</a></li><li>🎛️ Synth Aggregatrex 6000 (3D) - Coming Soon</li><li>🎵 Melody Maker Ordnung - Coming Soon</li><li>🔊 Sample Segmenter Piecework - Coming Soon</li></ul></body></html>' > dist/index.html &&
+cp -r synth_aggregatrex6000/build dist/synth_aggregatrex6000 &&
+cp -r melodymaker_ordnung/build dist/melodymaker_ordnung &&
+cp -r samplesegmenter_piecework/build dist/samplesegmenter_piecework &&
+cp -r preimage_collider_hash-to-music dist/preimage_collider_hash-to-music &&
+echo '<html><head><title>WebAudio API Aggregatron</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:50px auto;padding:20px;background:#1a1a1a;color:#fff}h1{color:#e91e63;text-align:center;margin-bottom:40px}ul{list-style:none;padding:0}li{margin:15px 0}a{color:#03dac6;text-decoration:none;font-size:18px;display:block;padding:15px;background:#333;border-radius:8px;transition:background 0.3s}a:hover{background:#555}.description{color:#aaa;font-size:14px;margin-top:5px}</style></head><body><h1>🎵 WebAudio API Aggregatron</h1><p style="text-align:center;color:#aaa;margin-bottom:40px;">A collection of experimental web audio applications</p><ul><li><a href="/synth_aggregatrex5000/">🎹 Synth Aggregatrex 5000<div class="description">Web synthesizer with touch support and mobile optimization</div></a></li><li><a href="/synth_aggregatrex6000/">🎛️ Synth Aggregatrex 6000 (3D)<div class="description">Three.js powered 3D synthesizer interface</div></a></li><li><a href="/melodymaker_ordnung/">🎵 Melody Maker Ordnung<div class="description">Algorithmic melody generation tool</div></a></li><li><a href="/samplesegmenter_piecework/">🔊 Sample Segmenter Piecework<div class="description">Audio sample manipulation and segmentation</div></a></li><li><a href="/preimage_collider_hash-to-music/">🔗 Preimage Collider Hash-to-Music<div class="description">Convert hash values to musical compositions</div></a></li></ul></body></html>' > dist/index.html &&
 echo "Deployment structure created successfully"
 """
 publish = "dist"
@@ -38,4 +54,9 @@ status = 200
 [[redirects]]
 from = "/samplesegmenter_piecework/*"
 to = "/samplesegmenter_piecework/index.html"
+status = 200
+
+[[redirects]]
+from = "/preimage_collider_hash-to-music/*"
+to = "/preimage_collider_hash-to-music/index.html"
 status = 200
