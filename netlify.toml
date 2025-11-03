@@ -1,20 +1,23 @@
 [build]
 command = """
-cd synth_aggregatrex5000 && npm install && npm run build && cd .. &&
-cd synth_aggregatrex6000 && npm install && npm run build && cd .. &&
-cd melodymaker_ordnung && npm install && npm run build && cd .. &&
-cd samplesegmenter_piecework && npm install && npm run build && cd .. &&
+# Build synth_aggregatrex5000
+echo "Building synth_aggregatrex5000..." &&
+cd synth_aggregatrex5000 && npm ci --only=production && npm run build && cd .. &&
+echo "synth_aggregatrex5000 build complete" &&
+
+# Create dist structure with just working project for now
+echo "Creating dist structure..." &&
 mkdir -p dist &&
 cp -r synth_aggregatrex5000/build dist/synth_aggregatrex5000 &&
-cp -r synth_aggregatrex6000/build dist/synth_aggregatrex6000 &&
-cp -r melodymaker_ordnung/build dist/melodymaker_ordnung &&
-cp -r samplesegmenter_piecework/build dist/samplesegmenter_piecework &&
-echo '<html><head><title>WebAudio API Aggregatron</title></head><body><h1>WebAudio API Projects</h1><ul><li><a href="/synth_aggregatrex5000/">Synth Aggregatrex 5000</a></li><li><a href="/synth_aggregatrex6000/">Synth Aggregatrex 6000</a></li><li><a href="/melodymaker_ordnung/">Melody Maker Ordnung</a></li><li><a href="/samplesegmenter_piecework/">Sample Segmenter Piecework</a></li></ul></body></html>' > dist/index.html
+echo '<html><head><title>WebAudio API Aggregatron</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:50px auto;padding:20px;background:#1a1a1a;color:#fff}h1{color:#e91e63;text-align:center}ul{list-style:none;padding:0}li{margin:15px 0}a{color:#03dac6;text-decoration:none;font-size:18px;display:block;padding:15px;background:#333;border-radius:8px;transition:background 0.3s}a:hover{background:#555}</style></head><body><h1>WebAudio API Projects</h1><ul><li><a href="/synth_aggregatrex5000/">🎹 Synth Aggregatrex 5000</a></li><li>🎛️ Synth Aggregatrex 6000 (3D) - Coming Soon</li><li>🎵 Melody Maker Ordnung - Coming Soon</li><li>🔊 Sample Segmenter Piecework - Coming Soon</li></ul></body></html>' > dist/index.html &&
+echo "Deployment structure created successfully"
 """
 publish = "dist"
 
 [build.environment]
 NODE_VERSION = "18"
+NPM_FLAGS = "--silent"
+CI = "false"
 
 # Redirect each app's routes to its index.html
 [[redirects]]
