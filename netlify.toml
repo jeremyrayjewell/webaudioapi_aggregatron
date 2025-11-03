@@ -2,7 +2,7 @@
 command = """
 # Build synth_aggregatrex5000
 echo "Building synth_aggregatrex5000..." &&
-cd synth_aggregatrex5000 && npm ci --only=production && npm run build && cd .. &&
+cd synth_aggregatrex5000 && npm ci && npm run build && cd .. &&
 echo "synth_aggregatrex5000 build complete" &&
 
 # Create dist structure with just working project for now
