@@ -14,7 +14,7 @@ cd melodymaker_ordnung && npm ci && npm run build && cd .. &&
 echo "melodymaker_ordnung build complete" &&
 
 echo "Building samplesegmenter_piecework..." &&
-cd samplesegmenter_piecework && npm ci && npm run build && cd .. &&
+cd samplesegmenter_piecework && npm ci --legacy-peer-deps && npm run build && cd .. &&
 echo "samplesegmenter_piecework build complete" &&
 
 # Create dist structure and copy all projects
