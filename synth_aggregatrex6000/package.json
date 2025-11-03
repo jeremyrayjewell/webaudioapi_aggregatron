@@ -2,6 +2,7 @@
   "name": "aggregatrex",
   "version": "1.0.0",
   "private": true,
+  "homepage": "/synth_aggregatrex6000",
   "dependencies": {
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",

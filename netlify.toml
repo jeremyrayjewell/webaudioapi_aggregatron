@@ -1,12 +1,38 @@
 [build]
-base = "synth_aggregatrex5000"
-command = "npm install && npm run build"
-publish = "build"
+command = """
+cd synth_aggregatrex5000 && npm install && npm run build && cd .. &&
+cd synth_aggregatrex6000 && npm install && npm run build && cd .. &&
+cd melodymaker_ordnung && npm install && npm run build && cd .. &&
+cd samplesegmenter_piecework && npm install && npm run build && cd .. &&
+mkdir -p dist &&
+cp -r synth_aggregatrex5000/build dist/synth_aggregatrex5000 &&
+cp -r synth_aggregatrex6000/build dist/synth_aggregatrex6000 &&
+cp -r melodymaker_ordnung/build dist/melodymaker_ordnung &&
+cp -r samplesegmenter_piecework/build dist/samplesegmenter_piecework &&
+echo '<html><head><title>WebAudio API Aggregatron</title></head><body><h1>WebAudio API Projects</h1><ul><li><a href="/synth_aggregatrex5000/">Synth Aggregatrex 5000</a></li><li><a href="/synth_aggregatrex6000/">Synth Aggregatrex 6000</a></li><li><a href="/melodymaker_ordnung/">Melody Maker Ordnung</a></li><li><a href="/samplesegmenter_piecework/">Sample Segmenter Piecework</a></li></ul></body></html>' > dist/index.html
+"""
+publish = "dist"
 
 [build.environment]
 NODE_VERSION = "18"
 
+# Redirect each app's routes to its index.html
 [[redirects]]
-from = "/**"
-to = "/index.html"
+from = "/synth_aggregatrex5000/*"
+to = "/synth_aggregatrex5000/index.html"
+status = 200
+
+[[redirects]]
+from = "/synth_aggregatrex6000/*"
+to = "/synth_aggregatrex6000/index.html"
+status = 200
+
+[[redirects]]
+from = "/melodymaker_ordnung/*"
+to = "/melodymaker_ordnung/index.html"
+status = 200
+
+[[redirects]]
+from = "/samplesegmenter_piecework/*"
+to = "/samplesegmenter_piecework/index.html"
 status = 200
