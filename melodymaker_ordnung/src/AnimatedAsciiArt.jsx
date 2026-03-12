@@ -1,12 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 
 // Create the component
 const AnimatedAsciiArt = ({ asciiLines }) => {
-  
-  const [charOffsets, setCharOffsets] = useState(
-    // Initialize with empty arrays for each line
-    Array.from({ length: asciiLines.length }, () => [])
-  );
+  const charRefs = useRef([]);
   
   // Pre-calculate line length once for better performance
   const lineLengths = useMemo(() => 
@@ -21,31 +17,35 @@ const AnimatedAsciiArt = ({ asciiLines }) => {
     
     let animationFrameId;
     let startTime = Date.now();
+    let lastFrameTime = 0;
+    const frameInterval = 1000 / 24;
     
-    // Optimized animation function with less GC pressure
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      
-      // Calculate new vertical offsets for each character with reduced object creation
-      const newOffsets = [];
-      for (let i = 0; i < asciiLines.length; i++) {
-        const lineOffsets = new Array(lineLengths[i]);
-        for (let j = 0; j < lineLengths[i]; j++) {
-          const phase = (j / wavelength) - (elapsed * speed);
-          lineOffsets[j] = Math.sin(phase * 2 * Math.PI) * amplitude;
-        }
-        newOffsets.push(lineOffsets);
+    const animate = (timestamp) => {
+      animationFrameId = requestAnimationFrame(animate);
+      if (timestamp - lastFrameTime < frameInterval) {
+        return;
       }
-      
-      setCharOffsets(newOffsets);
-      animationFrameId = requestAnimationFrame(animate);
+
+      lastFrameTime = timestamp;
+      const elapsed = Date.now() - startTime;
+
+      for (let i = 0; i < asciiLines.length; i++) {
+        for (let j = 0; j < lineLengths[i]; j++) {
+          const element = charRefs.current[i]?.[j];
+          if (!element) continue;
+          const phase = (j / wavelength) - (elapsed * speed);
+          const offset = Math.sin(phase * 2 * Math.PI) * amplitude;
+          element.style.transform = offset === 0 ? "translateY(0px)" : `translateY(${offset}px)`;
+        }
+      }
     };
-      animationFrameId = requestAnimationFrame(animate);
+
+    animationFrameId = requestAnimationFrame(animate);
     
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [asciiLines]);    return (
+  }, [asciiLines, lineLengths]);    return (
     <div className="animated-ascii-container" style={{ 
       fontFamily: "'Px437_IBM_EGA8', 'DOS', monospace",
       background: "transparent",  // Transparent background      color: "#cccccc", // Brighter text color
@@ -68,12 +68,16 @@ const AnimatedAsciiArt = ({ asciiLines }) => {
           fontSize: "10px"
         }}>
           {line.split('').map((char, charIndex) => {
-            // Don't animate spaces and special characters
-            const offset = char.trim() === '' ? 0 : (charOffsets[lineIndex][charIndex] || 0);
               return (              <span
                 key={charIndex}
+                ref={(element) => {
+                  if (!charRefs.current[lineIndex]) {
+                    charRefs.current[lineIndex] = [];
+                  }
+                  charRefs.current[lineIndex][charIndex] = element;
+                }}
                 style={{                  display: 'inline-block',
-                  transform: `translateY(${offset}px)`,
+                  transform: 'translateY(0px)',
                   background: "transparent", // Ensure each character has transparent background
                   fontSize: "10px", // Fixed exact size
                   lineHeight: "1",

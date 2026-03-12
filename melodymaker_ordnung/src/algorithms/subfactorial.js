@@ -1,68 +1,81 @@
-export function getDerangementData(scale, maxPermutations = 300) {
+function* chunkEvents(eventIterator, chunkSize = 16) {
     let notes = [];
     let steps = [];
-    let permutationCount = 0;
 
-    // Limit input size to prevent freezing
+    for (const event of eventIterator) {
+        if (event.step) steps.push(event.step);
+        if ("note" in event) notes.push(event.note);
+
+        if (notes.length >= chunkSize || steps.length >= chunkSize) {
+            yield { notes, steps };
+            notes = [];
+            steps = [];
+        }
+    }
+
+    if (notes.length > 0 || steps.length > 0) {
+        yield { notes, steps };
+    }
+}
+
+function* derangementEvents(scale, maxPermutations = 300) {
     const maxElements = 6;
     const n = Math.min(scale.length, maxElements);
     const workingScale = scale.slice(0, n);
 
     if (n < 2) {
-        steps.push("Derangement: Need at least 2 elements to create a derangement.");
-        return { notes, steps };
+        yield {
+            note: null,
+            step: "Derangement: Need at least 2 elements to create a derangement.",
+        };
+        return;
     }
 
-    function isDerangement(perm) {
-        for (let i = 0; i < perm.length; i++) {
-            if (perm[i] === i) return false;
-        }
-        return true;
-    }
-
-    function generateDerangement(arr, used, current) {
-        // Stop if we've generated enough permutations
-        if (permutationCount >= maxPermutations) {
-            return;
-        }
-
-        if (current.length === arr.length) {
-            if (isDerangement(current)) {
-                permutationCount++;
-                steps.push(`Found derangement #${permutationCount}: [${current.join(", ")}]`);
-                
-                // Add notes for the derangement
-                current.forEach(index => {
-                    notes.push(workingScale[index]);
-                });
-            }
-            return;
-        }
-
-        for (let i = 0; i < arr.length; i++) {
-            if (!used[i] && i !== current.length) {  // i !== current.length ensures no element in original position
-                used[i] = true;
-                current.push(i);
-                generateDerangement(arr, used, current);
-                current.pop();
-                used[i] = false;
-            }
-        }
-    }
-
-    // Initialize arrays for tracking used elements and current permutation
+    let permutationCount = 0;
     const used = Array(n).fill(false);
     const current = [];
 
-    // Generate derangements
-    generateDerangement(Array.from({length: n}, (_, i) => i), used, current);
+    function* generate() {
+        if (permutationCount >= maxPermutations) return;
 
-    if (permutationCount === 0) {
-        steps.push("No derangements found within limits");
-        // Add some notes anyway so we have audio output
-        workingScale.forEach(freq => notes.push(freq));
+        if (current.length === n) {
+            permutationCount++;
+            yield {
+                note: null,
+                step: `Found derangement #${permutationCount}: [${current.join(", ")}]`,
+            };
+            for (const index of current) {
+                yield { note: workingScale[index] };
+            }
+            return;
+        }
+
+        for (let i = 0; i < n; i++) {
+            if (used[i] || i === current.length) continue;
+            used[i] = true;
+            current.push(i);
+            yield* generate();
+            current.pop();
+            used[i] = false;
+        }
     }
 
-    steps.push(`Total derangements found: ${permutationCount}`);
-    return { notes, steps };
+    yield* generate();
+
+    if (permutationCount === 0) {
+      yield { note: null, step: "No derangements found within limits" };
+      for (const freq of workingScale) {
+          yield { note: freq };
+      }
+    }
+
+    yield { note: null, step: `Total derangements found: ${permutationCount}` };
+}
+
+export function getDerangementData(scale, maxPermutations = 300) {
+    return {
+        notes: [],
+        steps: [],
+        stream: chunkEvents(derangementEvents(scale, maxPermutations)),
+    };
 }

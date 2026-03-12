@@ -1,52 +1,97 @@
-export function getPolynomialEvaluationData(scale, coefficients, x) {
-    let notes = [];
-    let steps = [];
-
-    const n = coefficients.length;
-    if (n === 0) {
-        steps.push("PolynomialEvaluation: No coefficients provided.");
-        return { notes, steps };
-    }
-
-    let result = 0;
-    for (let i = 0; i < n; i++) {
-        const term = coefficients[i] * Math.pow(x, i);
-        result += term;
-        steps.push(`Term: ${coefficients[i]} * ${x}^${i} = ${term.toFixed(2)}`);
-        notes.push(scale[i % scale.length]);
-    }
-
-    steps.push(`Polynomial result: ${result.toFixed(2)}`);
-    return { notes, steps };
-}
-
-export function getMatrixExponentiationData(scale, k) {
+export function getKCliqueSearchData(scale, coefficients, x) {
     let notes = [];
     let steps = [];
 
     const n = scale.length;
+    const cliqueSize = Math.max(3, coefficients?.length || 3);
+
     if (n === 0) {
-        steps.push("MatrixExponentiation: Scale is empty, nothing to exponentiate.");
+        steps.push("KClique: Scale is empty, no graph to search.");
         return { notes, steps };
     }
 
-    // Create an n x n matrix filled with scale values
-    const matrix = Array.from({ length: n }, (_, i) => scale.slice());
-    let resultMatrix = Array.from({ length: n }, (_, i) => (i === 0 ? scale.slice() : Array(n).fill(0)));
-
-    for (let exp = 1; exp < k; exp++) {
-        const newMatrix = Array.from({ length: n }, () => Array(n).fill(0));
-        for (let i = 0; i < n; i++) {
-            for (let j = 0; j < n; j++) {
-                for (let l = 0; l < n; l++) {
-                    newMatrix[i][j] += resultMatrix[i][l] * matrix[l][j];
-                    steps.push(`Multiplying resultMatrix[${i}][${l}] * matrix[${l}][${j}] and adding to newMatrix[${i}][${j}]`);
-                    notes.push(resultMatrix[i][l], matrix[l][j]);
-                }
-            }
+    const adjacency = Array.from({ length: n }, () => Array(n).fill(false));
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            const connected = Math.abs(scale[i] - scale[j]) <= (x + 1) * 220;
+            adjacency[i][j] = connected;
+            adjacency[j][i] = connected;
         }
-        resultMatrix = newMatrix;
     }
 
+    const chosen = [];
+
+    function search(start) {
+        if (chosen.length === cliqueSize) {
+            steps.push(`KClique: clique=[${chosen.join(", ")}]`);
+            chosen.forEach((index) => notes.push(scale[index]));
+            return;
+        }
+
+        for (let v = start; v < n; v++) {
+            let valid = true;
+            for (const u of chosen) {
+                if (!adjacency[u][v]) {
+                    valid = false;
+                    break;
+                }
+            }
+            steps.push(`KClique: try vertex=${v}, depth=${chosen.length}`);
+            notes.push(scale[v]);
+            if (!valid) continue;
+            chosen.push(v);
+            search(v + 1);
+            chosen.pop();
+        }
+    }
+
+    search(0);
+    return { notes, steps };
+}
+
+export function getKSumEnumerationData(scale, k) {
+    let notes = [];
+    let steps = [];
+
+    const n = scale.length;
+    const tupleSize = Math.max(1, Math.min(n, k || 4));
+    const target = scale
+        .slice(0, tupleSize)
+        .reduce((sum, value) => sum + value, 0);
+    const chosen = [];
+    let solutionCount = 0;
+
+    if (n === 0) {
+        steps.push("KSum: Scale is empty, no tuples to inspect.");
+        return { notes, steps };
+    }
+
+    function search(start, depth, runningSum) {
+        if (depth === tupleSize) {
+            steps.push(`KSum: tuple=[${chosen.join(", ")}], sum=${runningSum.toFixed(2)}`);
+            chosen.forEach((index) => notes.push(scale[index]));
+
+            if (runningSum === target) {
+                solutionCount++;
+                steps.push(
+                    `KSum: solution #${solutionCount} tuple=[${chosen.join(", ")}], sum=${runningSum.toFixed(2)}`
+                );
+                chosen.forEach((index) => notes.push(scale[index]));
+            }
+            return;
+        }
+
+        for (let i = start; i < n; i++) {
+            chosen.push(i);
+            search(i + 1, depth + 1, runningSum + scale[i]);
+            chosen.pop();
+        }
+    }
+
+    steps.push(`KSum: target=${target.toFixed(2)}, k=${tupleSize}`);
+    search(0, 0, 0);
+    if (solutionCount === 0) {
+        steps.push("KSum: no tuple matched the target");
+    }
     return { notes, steps };
 }

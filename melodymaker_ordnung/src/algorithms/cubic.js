@@ -9,8 +9,8 @@ export function getMatrixMultiplicationData(scale) {
     }
 
     // Create two n x n matrices filled with scale values
-    const matrixA = Array.from({ length: n }, (_, i) => scale.slice());
-    const matrixB = Array.from({ length: n }, (_, i) => scale.slice());
+    const matrixA = Array.from({ length: n }, () => scale.slice());
+    const matrixB = Array.from({ length: n }, () => scale.slice());
     const resultMatrix = Array.from({ length: n }, () => Array(n).fill(0));
 
     for (let i = 0; i < n; i++) {

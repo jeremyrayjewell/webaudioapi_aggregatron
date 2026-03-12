@@ -1,10 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 
 const MemoizedTransparentWaveOverlay = React.memo(function TransparentWaveOverlay({ audioCtx, analyser }) {
   const canvasRef = useRef(null);
-  const [isAudioActive, setIsAudioActive] = useState(false);
   const resizeTimeoutRef = useRef(null);
   const animationFrameRef = useRef(null);
+  const isAudioActiveRef = useRef(false);
   // Create optimized resize handler with useCallback
   const handleResize = useCallback(() => {
     if (!canvasRef.current) return;
@@ -93,9 +93,6 @@ const MemoizedTransparentWaveOverlay = React.memo(function TransparentWaveOverla
     // Use downsample factor to process fewer data points
     const downsampleFactor = window.devicePixelRatio > 1 ? 4 : 2;
     
-    // Pre-calculate the slice width to avoid recalculations in the loop
-    const sliceWidth = (canvas.width * 1.0) / (bufferLength / downsampleFactor);
-    
     const draw = (currentTime) => {
       animationFrameRef.current = requestAnimationFrame(draw);
       const elapsed = currentTime - lastFrameTime;
@@ -127,7 +124,10 @@ const MemoizedTransparentWaveOverlay = React.memo(function TransparentWaveOverla
           break;
         }
       }      if (hasAudioActivity) {
-        setIsAudioActive(true);
+        if (!isAudioActiveRef.current) {
+          isAudioActiveRef.current = true;
+          canvas.style.opacity = "1";
+        }
         
         // Set clipping path to prevent drawing outside the canvas
         ctx.save();
@@ -189,8 +189,9 @@ const MemoizedTransparentWaveOverlay = React.memo(function TransparentWaveOverla
         ctx.restore();
       } else {
         silenceCounter++;
-        if (silenceCounter > MAX_SILENCE_FRAMES) {
-          setIsAudioActive(false);
+        if (silenceCounter > MAX_SILENCE_FRAMES && isAudioActiveRef.current) {
+          isAudioActiveRef.current = false;
+          canvas.style.opacity = "0";
         }
       }
     };
@@ -216,7 +217,7 @@ const MemoizedTransparentWaveOverlay = React.memo(function TransparentWaveOverla
         pointerEvents: "none", 
         backgroundColor: "transparent", 
         mixBlendMode: "lighten", 
-        opacity: isAudioActive ? 1 : 0,
+        opacity: 0,
         transition: "opacity 0.5s ease-in-out",
         outline: "none",
         border: "none",

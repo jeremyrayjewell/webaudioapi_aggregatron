@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import MusicalBigO from "./MusicalBigO";
-import WaveformVisualizer from "./WaveformVisualizer";
 import AnimatedAsciiArt from "./AnimatedAsciiArt";
 import CombinedOverlay from "./CombinedOverlay";
+import bgImage from "./bg.png";
 import "./globalStyles.css";
 import {
   footerAsciiArt1,
@@ -28,6 +28,7 @@ function App() {
     const analyserNode = ctx.createAnalyser();
     analyserNode.fftSize = 1024; // Changed from 2048 to 1024 for better performance
     analyserNode.smoothingTimeConstant = 0.8; // Add smoothing for nicer visualization
+    analyserNode.connect(ctx.destination);
     
     setAudioCtx(ctx);
     setAnalyser(analyserNode);
@@ -112,6 +113,19 @@ function App() {
         overflow: "hidden", // Add overflow hidden to prevent border artifacts
       }}
     >
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: -2,
+          backgroundImage: `url(${bgImage})`,
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover",
+          pointerEvents: "none",
+        }}
+      />
       <div className="row mb-3" style={{ margin: 0 }}>
         <div className="col-12 text-center">
           <div className="ascii-art-container">
@@ -145,10 +159,7 @@ function App() {
         }}
       >
         {audioCtx && analyser && (
-          <>
-            <WaveformVisualizer audioCtx={audioCtx} analyser={analyser} />
-            <CombinedOverlay audioCtx={audioCtx} analyser={analyser} />
-          </>
+          <CombinedOverlay audioCtx={audioCtx} analyser={analyser} />
         )}
         <MusicalBigO audioCtx={audioCtx} analyser={analyser} />
       </div>

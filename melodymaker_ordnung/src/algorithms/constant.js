@@ -33,14 +33,19 @@ export function getCheckEvenOddData(scale, numNotes, selectEven) {
   for (let i = 0; i < numNotes; i++) {
     const index = Math.floor(Math.random() * scale.length);
     const element = scale[index];
-    const isEven = element % 2 === 0;
-    const matchesCriteria = (selectEven && isEven) || (!selectEven && !isEven);
+    const isEvenIndex = index % 2 === 0;
+    const matchesCriteria =
+      (selectEven && isEvenIndex) || (!selectEven && !isEvenIndex);
 
     if (matchesCriteria) {
-      steps.push(`CheckEvenOdd: Randomly selected element at index ${index} is ${element.toFixed(2)} Hz and is ${isEven ? "even" : "odd"}`);
+      steps.push(
+        `CheckEvenOdd: Index ${index} is ${isEvenIndex ? "even" : "odd"}; playing ${element.toFixed(2)} Hz`
+      );
       notes.push(element);
     } else {
-      steps.push(`CheckEvenOdd: Randomly selected element at index ${index} is ${element.toFixed(2)} Hz and is ${isEven ? "even" : "odd"} - Silent rest added`);
+      steps.push(
+        `CheckEvenOdd: Index ${index} is ${isEvenIndex ? "even" : "odd"}; rest added`
+      );
       notes.push(null); // Representing silent rest with null
     }
   }

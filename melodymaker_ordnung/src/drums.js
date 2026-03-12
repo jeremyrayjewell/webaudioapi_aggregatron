@@ -24,7 +24,7 @@ export const DRUM_SOUNDS = {
   ];
   
 
-  export function playDrum(audioCtx, drumType, volume = 1, gain = 1) {
+  export function playDrum(audioCtx, drumType, volume = 1, gain = 1, startTime = null) {
     if (!audioCtx) return;
     const soundDef = DRUM_SOUNDS[drumType];
     if (!soundDef) return; 
@@ -39,7 +39,7 @@ export const DRUM_SOUNDS = {
     oscillator.connect(gainNode);
     gainNode.connect(audioCtx.destination);
   
-    const now = audioCtx.currentTime;
+    const now = startTime ?? audioCtx.currentTime;
     const decayTime = soundDef.decay || 0.1;
   
     gainNode.gain.setValueAtTime(volume * gain, now);
@@ -260,7 +260,6 @@ export const DRUM_SOUNDS = {
         
   case "funky": 
         return generateDrumPattern(patternLength, "funk1", algoData);
-        break;
   
       case "random":
         const allDrums = Object.keys(DRUM_SOUNDS);

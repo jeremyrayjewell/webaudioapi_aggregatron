@@ -1,5 +1,7 @@
-export function getMergeSortData(scale, steps = []) {
+export function getMergeSortData(scale, sortOrder = "ascending", steps = []) {
     const notesInOrder = [];
+    const isPreferred = (left, right) =>
+        sortOrder === "descending" ? left >= right : left <= right;
 
     function mergeSortRecursive(arr) {
         if (arr.length <= 1) {
@@ -31,7 +33,7 @@ export function getMergeSortData(scale, steps = []) {
     function merge(left, right) {
         let result = [], i = 0, j = 0;
         while (i < left.length && j < right.length) {
-            if (left[i] <= right[j]) {
+            if (isPreferred(left[i], right[j])) {
                 steps.push(`Consider: [${left[i].toFixed(2)}] from left`);
                 notesInOrder.push(left[i]);
                 result.push(left[i++]);
@@ -58,28 +60,30 @@ export function getMergeSortData(scale, steps = []) {
     return { notes: notesInOrder, steps };
 }
 
-export function getHeapSortData(scale) {
+export function getHeapSortData(scale, sortOrder = "ascending") {
     let notes = [];
     let steps = [];
+    const shouldPromote = (candidate, current) =>
+        sortOrder === "descending" ? candidate < current : candidate > current;
 
     function heapify(arr, n, i) {
-        let largest = i;
+        let selected = i;
         let left = 2 * i + 1;
         let right = 2 * i + 2;
 
-        if (left < n && arr[left] > arr[largest]) {
-            largest = left;
+        if (left < n && shouldPromote(arr[left], arr[selected])) {
+            selected = left;
         }
 
-        if (right < n && arr[right] > arr[largest]) {
-            largest = right;
+        if (right < n && shouldPromote(arr[right], arr[selected])) {
+            selected = right;
         }
 
-        if (largest !== i) {
-            steps.push(`Swap: ${arr[i].toFixed(2)} with ${arr[largest].toFixed(2)}`);
-            notes.push(arr[i], arr[largest]);
-            [arr[i], arr[largest]] = [arr[largest], arr[i]];
-            heapify(arr, n, largest);
+        if (selected !== i) {
+            steps.push(`Swap: ${arr[i].toFixed(2)} with ${arr[selected].toFixed(2)}`);
+            notes.push(arr[i], arr[selected]);
+            [arr[i], arr[selected]] = [arr[selected], arr[i]];
+            heapify(arr, n, selected);
         }
     }
 
@@ -98,13 +102,15 @@ export function getHeapSortData(scale) {
         }
     }
 
-    heapSort(scale);
+    heapSort([...scale]);
     return { notes, steps };
 }
 
-export function getQuickSortData(scale) {
+export function getQuickSortData(scale, sortOrder = "ascending") {
     let notes = [];
     let steps = [];
+    const shouldMoveLeft = (value, pivot) =>
+        sortOrder === "descending" ? value > pivot : value < pivot;
 
     function quickSort(arr, low, high) {
         if (low < high) {
@@ -120,7 +126,7 @@ export function getQuickSortData(scale) {
         let i = low - 1;
 
         for (let j = low; j < high; j++) {
-            if (arr[j] < pivot) {
+            if (shouldMoveLeft(arr[j], pivot)) {
                 i++;
                 steps.push(`Swap: ${arr[i].toFixed(2)} with ${arr[j].toFixed(2)}`);
                 notes.push(arr[i], arr[j]);
@@ -133,6 +139,7 @@ export function getQuickSortData(scale) {
         return i + 1;
     }
 
-    quickSort(scale, 0, scale.length - 1);
+    const arr = [...scale];
+    quickSort(arr, 0, arr.length - 1);
     return { notes, steps };
 }

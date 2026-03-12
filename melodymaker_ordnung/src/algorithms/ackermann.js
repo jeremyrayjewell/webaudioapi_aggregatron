@@ -1,35 +1,28 @@
 export function getAckermannData(scale, m, n) {
     let notes = [];
     let steps = [];
-    let recursionDepth = 0;
-    const maxDepth = 20; // Limit recursion depth to prevent freezing
 
-    function ackermann(m, n) {
-        recursionDepth++;
-        if (recursionDepth > maxDepth) {
-            steps.push("Max recursion depth reached — stopping further recursion.");
-            recursionDepth--;
-            return 0;
-        }
-
-        if (m === 0) {
-            steps.push(`Ackermann(${m}, ${n}) = ${n + 1}`);
-            notes.push(scale[(n + 1) % scale.length]);
-            recursionDepth--;
-            return n + 1;
-        }
-        if (n === 0) {
-            steps.push(`Ackermann(${m}, ${n}) = Ackermann(${m - 1}, 1)`);
-            const result = ackermann(m - 1, 1);
+    function ackermann(mValue, nValue) {
+        if (mValue === 0) {
+            const result = nValue + 1;
+            steps.push(`Ackermann(${mValue}, ${nValue}) = ${result}`);
             notes.push(scale[result % scale.length]);
-            recursionDepth--;
             return result;
         }
-        steps.push(`Ackermann(${m}, ${n}) = Ackermann(${m - 1}, Ackermann(${m}, ${n - 1}))`);
-        const innerResult = ackermann(m, n - 1);
-        const result = ackermann(m - 1, innerResult);
+
+        if (nValue === 0) {
+            steps.push(`Ackermann(${mValue}, ${nValue}) = Ackermann(${mValue - 1}, 1)`);
+            const result = ackermann(mValue - 1, 1);
+            notes.push(scale[result % scale.length]);
+            return result;
+        }
+
+        steps.push(
+            `Ackermann(${mValue}, ${nValue}) = Ackermann(${mValue - 1}, Ackermann(${mValue}, ${nValue - 1}))`
+        );
+        const innerResult = ackermann(mValue, nValue - 1);
+        const result = ackermann(mValue - 1, innerResult);
         notes.push(scale[result % scale.length]);
-        recursionDepth--;
         return result;
     }
 

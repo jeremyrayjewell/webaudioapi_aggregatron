@@ -1,74 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { SCALES } from "./scales.js";
 import { createPatternFromNotes } from "./patternHelpers.js";
 import "./collapsible.css";
 import {
-  getAccessElementData,
-  getCheckEvenOddData,
-  getFirstElementData,
-} from "./algorithms/constant.js";
-import { 
-  getRepeatedHalvingData, 
-} from "./algorithms/doublelogarithmic.js";
+  COMPLEXITY_TABS,
+  resolveAlgorithmLines,
+} from "./algorithms/catalog.js";
 import {
-  getBinarySearchData,
-  getExponentiationBySquaringData,  
-  getLogDivData,
-  getIterativeLogData,
-  getExtraLogData,
-} from "./algorithms/logorithmic.js";
-import { 
-  getRepeatedLogReductionData, 
-} from "./algorithms/polylogarithmic.js";
-import { 
-  getRandomSamplingData, 
-  getJumpSearchData, 
-} from "./algorithms/sublinear.js";
-import {
-  getLinearSearchData,
-  getSumOfElementsData,
-  getFindMaxData,
-  getCountOccurrencesData,
-} from "./algorithms/linear.js";
-import {
-  getMergeSortData,
-  getHeapSortData,
-  getQuickSortData,
-} from "./algorithms/linearithmic.js";
-import {
-  getBubbleSortData,
-  getSelectionSortData,
-  getInsertionSortData,
-} from "./algorithms/qaudratic.js";
-import {
-  getMatrixMultiplicationData,
-  getThreeSumData,
-} from "./algorithms/cubic.js";
-import {
-  getPolynomialEvaluationData,
-  getMatrixExponentiationData,
-} from "./algorithms/polynomialGeneral.js";
-import {
-  getFibonacciData,
-  getSubsetSumData,
-} from "./algorithms/exponentialBase2.js";
-import {
-  getTowersOfHanoiData,
-  getPermutationsData,
-} from "./algorithms/exponentialBaseC.js";
-import { 
-  getTravelingSalesmanData, 
-} from "./algorithms/factorial.js";
-import { 
-  getDerangementData, 
-} from "./algorithms/subfactorial.js";
-import { 
-  getAckermannData, 
-} from "./algorithms/ackermann.js";
-import { 
-  getDoubleExponentialData, 
-} from "./algorithms/doubleExponential.js";
-
+  describeAlgorithmEntry,
+  getAlgorithmEntry,
+} from "./algorithms/registry.js";
 
 import {
   playDrum,
@@ -81,6 +22,20 @@ export default function MusicalBigO({ audioCtx, analyser }) {
   const [bpm, setBpm] = useState(60);
   const TICKS_PER_BEAT = 4;
   const clockIdRef = useRef(null);
+  const visualClockIdRef = useRef(null);
+  const nextNoteTimeRef = useRef(0);
+  const scheduledStepRef = useRef(0);
+  const transportStartTimeRef = useRef(0);
+  const tickDurationRef = useRef(0);
+  const lastVisualStepRef = useRef(-1);
+  const patternByStepRef = useRef([]);
+  const rhythmPatternRef = useRef([]);
+  const algoStepsRef = useRef([]);
+  const algorithmNotesRef = useRef([]);
+  const algorithmStreamRef = useRef(null);
+  const algorithmStreamDoneRef = useRef(true);
+  const sortDemoInputRef = useRef(new Map());
+  const currentRawStepRef = useRef("");
 
   
   const [selectedRootNote, setSelectedRootNote] = useState("A");
@@ -88,20 +43,19 @@ export default function MusicalBigO({ audioCtx, analyser }) {
   const [selectedScaleVariation, setSelectedScaleVariation] = useState("pentatonic");
   const [selectedOctave, setSelectedOctave] = useState(0);
   
-  const [currentAlgo, setCurrentAlgo] = useState(null);
-  const [activePattern, setActivePattern] = useState([]); 
-  const [patternLength, setPatternLength] = useState(0);
-  const [algoSteps, setAlgoSteps] = useState([]);
-  const [algoStepsLength, setAlgoStepsLength] = useState(0);
-  const [displayedAlgoSteps, setDisplayedAlgoSteps] = useState([]); 
-  const [stepOffset, setStepOffset] = useState(0); 
+  const currentAlgoRef = useRef(null);
+  const currentAlgorithmEntryRef = useRef(null);
   const MAX_DISPLAYED_STEPS = 10; 
   
   const stepRef = useRef(0);
+  const displayedAlgoStepsRef = useRef([]);
 
   
   const audioCanvasRef = useRef(null);
-  const algorithmCanvasRef = useRef(null);  const drumCanvasRef = useRef(null);
+  const pseudocodePanelRef = useRef(null);
+  const algorithmPanelRef = useRef(null);
+  const sourcePanelRef = useRef(null);
+  const drumCanvasRef = useRef(null);
   
   const [showDrumGain, setShowDrumGain] = useState(false);
   
@@ -126,9 +80,99 @@ export default function MusicalBigO({ audioCtx, analyser }) {
   const [vibratoOn, setVibratoOn] = useState(false);
   const [vibratoRate, setVibratoRate] = useState(6);
   const [vibratoDepth, setVibratoDepth] = useState(5);  
-  const [rhythmPattern, setRhythmPattern] = useState([]);
 
   const [drumVariation, setDrumVariation] = useState("simple1");
+  const [sortOrder, setSortOrder] = useState("ascending");
+  const [activeVerificationLines, setActiveVerificationLines] = useState([
+    "Algorithm Registry",
+    "status: no active algorithm",
+  ]);
+  const resizeTimeoutRef = useRef(null);
+
+  const setCanvasDisplaySize = (canvas, width, height) => {
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.dataset.logicalWidth = String(width);
+    canvas.dataset.logicalHeight = String(height);
+    canvas.dataset.dpr = String(dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    canvas.style.display = "block";
+  };
+
+  const getCanvasMetrics = (canvas, ctx) => {
+    const logicalWidth = Number(canvas.dataset.logicalWidth || canvas.clientWidth || canvas.width);
+    const logicalHeight = Number(canvas.dataset.logicalHeight || canvas.clientHeight || canvas.height);
+    const dpr = Number(canvas.dataset.dpr || 1);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { width: logicalWidth, height: logicalHeight };
+  };
+
+  const escapeHtml = (value) =>
+    String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const rebuildPlaybackBuffers = () => {
+    const pattern = createPatternFromNotes(algorithmNotesRef.current, 1);
+    patternByStepRef.current = Array.from({ length: pattern.length }, () => []);
+    pattern.forEach((noteItem) => {
+      if (noteItem && noteItem.freq != null) {
+        patternByStepRef.current[noteItem.step].push(noteItem);
+      }
+    });
+    rhythmPatternRef.current = generateDrumPattern(
+      pattern.length,
+      drumVariation,
+      { notes: algorithmNotesRef.current, steps: algoStepsRef.current }
+    );
+  };
+
+  const consumeAlgorithmStream = (minimumNotes = 1, maxChunks = 8) => {
+    if (!algorithmStreamRef.current || algorithmStreamDoneRef.current) return false;
+
+    let chunksConsumed = 0;
+    let notesAdded = 0;
+    let changed = false;
+
+    while (chunksConsumed < maxChunks && notesAdded < minimumNotes) {
+      const nextChunk = algorithmStreamRef.current.next();
+      if (nextChunk.done) {
+        algorithmStreamDoneRef.current = true;
+        break;
+      }
+
+      const chunk = nextChunk.value || {};
+      if (Array.isArray(chunk.notes) && chunk.notes.length > 0) {
+        algorithmNotesRef.current.push(...chunk.notes);
+        notesAdded += chunk.notes.length;
+        changed = true;
+      }
+      if (Array.isArray(chunk.steps) && chunk.steps.length > 0) {
+        algoStepsRef.current.push(...chunk.steps);
+        changed = true;
+      }
+      chunksConsumed++;
+    }
+
+    if (changed) {
+      rebuildPlaybackBuffers();
+    }
+
+    return changed;
+  };
+
+  const formatFrequencyAsNote = (frequency) => {
+    if (!Number.isFinite(frequency) || frequency <= 0) return "";
+    const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const midi = Math.round(69 + 12 * Math.log2(frequency / 440));
+    const noteName = noteNames[((midi % 12) + 12) % 12];
+    const octave = Math.floor(midi / 12) - 1;
+    return `${noteName}${octave}`;
+  };
 
   
   const [drumGains, setDrumGains] = useState({
@@ -166,19 +210,59 @@ const [selectEven, setSelectEven] = useState(true);
       
       const currentScaleObj = SCALES[selectedRootNote]?.[selectedScaleType];
       if (currentScaleObj) {
-        const availableVariations = Object.keys(currentScaleObj);
-        if (availableVariations.length > 0) {
-          const defaultVariation = availableVariations[0];
-          console.log(`Using ${defaultVariation} scale variation instead.`);
-          return currentScaleObj[defaultVariation];
+          const availableVariations = Object.keys(currentScaleObj);
+          if (availableVariations.length > 0) {
+            const defaultVariation = availableVariations[0];
+            console.log(`Using ${defaultVariation} scale variation instead.`);
+          return [...currentScaleObj[defaultVariation]];
         }
       }
       
       return [110, 220, 330, 440];
     }
     
-    return selectedScale;
+    return [...selectedScale];
   };
+
+  const getOrderedScale = (scaleValues = getSafeSelectedScale()) =>
+    [...scaleValues].sort((a, b) =>
+      sortOrder === "descending" ? b - a : a - b
+    );
+
+  const getShuffledSortInput = (algorithmKey, refresh = false) => {
+    const naturalScale = getSafeSelectedScale();
+    const cacheKey = `${algorithmKey}|${naturalScale.join(",")}`;
+
+    if (!refresh && sortDemoInputRef.current.has(cacheKey)) {
+      return [...sortDemoInputRef.current.get(cacheKey)];
+    }
+
+    const shuffled = [...naturalScale];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    if (
+      shuffled.length > 2 &&
+      (shuffled.every((value, index, arr) => index === 0 || arr[index - 1] <= value) ||
+        shuffled.every((value, index, arr) => index === 0 || arr[index - 1] >= value))
+    ) {
+      [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+    }
+
+    sortDemoInputRef.current.set(cacheKey, shuffled);
+    return [...shuffled];
+  };
+
+  const getAlgorithmExecutionContext = () => ({
+    getSafeSelectedScale,
+    getOrderedScale,
+    getShuffledSortInput,
+    numNotes,
+    selectEven,
+    sortOrder,
+  });
 
 
   useEffect(() => {
@@ -224,8 +308,7 @@ const [selectEven, setSelectEven] = useState(true);
     }
   }, [selectedRootNote, selectedScaleType]);
   
-  const getAvailableScaleVariations = () => {
-    
+  const availableScaleVariations = useMemo(() => {
     if (selectedRootNote === "Atonal") {
       return [
         { value: "chromatic", label: "Chromatic" },
@@ -236,15 +319,12 @@ const [selectEven, setSelectEven] = useState(true);
         { value: "spectral", label: "Spectral" }
       ];
     }
-    
-    
+
     const currentScaleObj = SCALES[selectedRootNote]?.[selectedScaleType] || {};
-    
-    
     const variationLabels = {
       pentatonic: "Pentatonic",
       blues: "Blues",
-      harmonic: "Harmonic", 
+      harmonic: "Harmonic",
       melodic: "Melodic",
       chromatic: "Chromatic",
       wholeTone: "Whole Tone",
@@ -256,53 +336,22 @@ const [selectEven, setSelectEven] = useState(true);
       octatonic: "Octatonic",
       microtonal: "Microtonal"
     };
-    
-    
-    const availableVariations = [];
-    
-    
-    Object.keys(currentScaleObj).forEach(variation => {
-      if (variationLabels[variation]) {
-        availableVariations.push({
-          value: variation,
-          label: variationLabels[variation]
-        });
-      }
-    });
-    
-    
-    if (availableVariations.length === 0) {
+
+    const variations = Object.keys(currentScaleObj)
+      .filter((variation) => variationLabels[variation])
+      .map((variation) => ({
+        value: variation,
+        label: variationLabels[variation]
+      }));
+
+    if (variations.length === 0) {
       console.warn(`No scale variations found for ${selectedRootNote} ${selectedScaleType}`);
       return [{ value: "pentatonic", label: "Pentatonic" }];
     }
-    
-    return availableVariations;
-  };
 
-  
-  useEffect(() => {
-    const scaleGroups = Object.keys(SCALES);
+    return variations;
+  }, [selectedRootNote, selectedScaleType]);
 
-    scaleGroups.forEach((group) => {
-      if (group === "Atonal") {
-        const atonalScales = SCALES.Atonal.atonal;
-        if (atonalScales) {
-          const atonalKeys = Object.keys(atonalScales);
-          atonalKeys.forEach((scale) => {
-            console.log(`Atonal Scale: ${scale}`, atonalScales[scale]);
-          });
-        }
-      } else {
-        const groupScales = SCALES[group];
-        const scaleTypes = Object.keys(groupScales);
-        scaleTypes.forEach((type) => {
-          console.log(`Key: ${group}, Scale: ${type}`, groupScales[type]);
-        });
-      }
-    });
-  }, []);
-  
-  
   
   const createCustomWaveform = (type, frequency) => {
     if (!audioCtx) return null;
@@ -505,7 +554,7 @@ const [selectEven, setSelectEven] = useState(true);
   
   
   
-  const playNote = (freq, durationMs = 200) => {
+  const playNote = (freq, startTime, durationSeconds = 0.2) => {
     if (!audioCtx) return;
     const adjustedFreq = freq * Math.pow(2, selectedOctave);
     
@@ -514,7 +563,7 @@ const [selectEven, setSelectEven] = useState(true);
     if (!oscillator) return;
 
     const gainNode = audioCtx.createGain();
-    const now = audioCtx.currentTime;
+    const now = startTime ?? audioCtx.currentTime;
     const attackTime = parseFloat(attack);
     const decayTime = parseFloat(decay);
     const sustainLevel = parseFloat(sustain);
@@ -546,8 +595,7 @@ const [selectEven, setSelectEven] = useState(true);
     
     oscillator.connect(audioOutput);
     audioOutput.connect(analyser);
-    analyser.connect(audioCtx.destination);
-    oscillator.start();
+    oscillator.start(now);
     
     
     if (modulatorOn && rate !== 1) {
@@ -559,8 +607,8 @@ const [selectEven, setSelectEven] = useState(true);
 
       modOscillator.connect(modGain);
       modGain.connect(gainNode.gain);
-      modOscillator.start();
-      modOscillator.stop(now + durationMs / 1000 + releaseTime);
+      modOscillator.start(now);
+      modOscillator.stop(now + durationSeconds + releaseTime);
     }
     
     
@@ -574,21 +622,20 @@ const [selectEven, setSelectEven] = useState(true);
       
       vibratoOsc.connect(vibratoGain);
       vibratoGain.connect(oscillator.frequency);
-      vibratoOsc.start();
-      vibratoOsc.stop(now + durationMs / 1000 + releaseTime);
+      vibratoOsc.start(now);
+      vibratoOsc.stop(now + durationSeconds + releaseTime);
     }
-    setTimeout(() => {
-      gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-      gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + releaseTime);
-      
-      
-      setTimeout(() => {
-        if (typeof oscillator.stop === 'function') {
-          oscillator.stop();
-        }
-      }, releaseTime * 1000);
-    }, durationMs);
+
+    const noteOffTime = now + durationSeconds;
+    gainNode.gain.setValueAtTime(
+      Math.max(0.0001, sustainLevel * depth),
+      noteOffTime
+    );
+    gainNode.gain.linearRampToValueAtTime(0.0001, noteOffTime + releaseTime);
+
+    if (typeof oscillator.stop === 'function') {
+      oscillator.stop(noteOffTime + releaseTime);
+    }
   };  
   
   
@@ -597,35 +644,37 @@ const [selectEven, setSelectEven] = useState(true);
     const canvas = audioCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const { width, height } = getCanvasMetrics(canvas, ctx);
+    ctx.clearRect(0, 0, width, height);
   
     if (frequencies.length === 0) return;
     const maxFreq = 800; 
-    const barWidth = 20;
-    const gap = 10;
-    let xPos = 10;
+    const horizontalPadding = 6;
+    const availableWidth = Math.max(1, width - horizontalPadding * 2);
+    const gap = Math.max(2, Math.floor(availableWidth * 0.04));
+    const totalGapWidth = gap * Math.max(0, frequencies.length - 1);
+    const barWidth = Math.max(
+      6,
+      Math.floor((availableWidth - totalGapWidth) / Math.max(1, frequencies.length))
+    );
+    const contentWidth = barWidth * frequencies.length + totalGapWidth;
+    let xPos = Math.max(horizontalPadding, Math.floor((width - contentWidth) / 2));
 
     const bgColor = '#000000';           
-    const barColor = '#aaaaaa';          
     const highlightColor = '#ffffff';    
     const textColor = '#00ff00';         
     const borderColor = '#00aaaa';       
     
     ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
     
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#0000aa'; 
-    ctx.fillRect(0, 0, canvas.width, 20);
+    ctx.strokeRect(0, 0, width, height);
     ctx.fillStyle = highlightColor;
-    ctx.font = "14px 'Px437_IBM_EGA8', 'DOS', monospace";
-    ctx.fillText("AUDIO ANALYZER", 10, 15);
-    
     frequencies.forEach((freq) => {
-      const barHeight = Math.min(150, (freq / maxFreq) * canvas.height * 0.8);
-      const yPos = canvas.height - barHeight - 10;
+      const barHeight = Math.min(150, (freq / maxFreq) * height * 0.8);
+      const yPos = height - barHeight - 10;
       
       const gradient = ctx.createLinearGradient(xPos, yPos, xPos, yPos + barHeight);
       gradient.addColorStop(0, '#00aaaa');  
@@ -641,7 +690,11 @@ const [selectEven, setSelectEven] = useState(true);
       
       ctx.fillStyle = textColor;
       ctx.font = "12px 'Px437_IBM_EGA8', 'DOS', monospace";
-      ctx.fillText(freq.toFixed(0) + "Hz", xPos, yPos - 5);
+      ctx.fillText(
+        `${freq.toFixed(0)}Hz ${formatFrequencyAsNote(freq)}`,
+        xPos,
+        yPos - 5
+      );
       
       xPos += barWidth + gap;
     });
@@ -650,145 +703,182 @@ const [selectEven, setSelectEven] = useState(true);
   
   
   
-  function drawAlgorithmCanvas(stepText, stepsToDisplay = null) {
-    const canvas = algorithmCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const textColor = '#ffffff';      
-    const bgColor = '#000000';       
-    const dimTextColor = '#aaaaaa';   
-    const highlightColor = '#ffff00'; 
-    const borderColor = '#aaaaaa';    
-    
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#0000aa'; 
-    ctx.fillRect(10, 10, canvas.width - 20, 20);
-    ctx.fillStyle = textColor;
-    ctx.font = "16px 'Px437_IBM_EGA8', 'DOS', monospace";
-    ctx.fillText("ALGORITHM VISUALIZATION", 20, 25);
-    
-    
-    const lineHeight = 18;
-    
-    
-    const visibleSteps = stepsToDisplay || displayedAlgoSteps;
-      
-    if (visibleSteps.length > 0) {
-      
-      const fadeHeight = 20;
-      const topGradient = ctx.createLinearGradient(0, 25, 0, 25 + fadeHeight);
-      topGradient.addColorStop(0, bgColor);
-      topGradient.addColorStop(1, 'rgba(0,0,0,0)');
-      
-      const bottomGradient = ctx.createLinearGradient(0, canvas.height - fadeHeight, 0, canvas.height);
-      bottomGradient.addColorStop(0, 'rgba(0,0,0,0)');
-      bottomGradient.addColorStop(1, bgColor);
-      
-      
-      ctx.fillStyle = topGradient;
-      ctx.fillRect(0, 25, canvas.width, fadeHeight);
-      
-      
-      ctx.fillStyle = bottomGradient;
-      ctx.fillRect(0, canvas.height - fadeHeight, canvas.width, fadeHeight);
-      
-      
-      const lineHeight = 18;
-      const availableHeight = canvas.height - 60; 
-      const maxVisibleSteps = Math.floor(availableHeight / lineHeight);
-      
-      if (visibleSteps.length >= maxVisibleSteps) {
-        ctx.fillStyle = dimTextColor;
-        ctx.fillRect(canvas.width - 8, 30, 3, canvas.height - 60);
-        
-        
-        const thumbSize = Math.max(15, (maxVisibleSteps / visibleSteps.length) * (canvas.height - 60));
-        const scrollPosition = visibleSteps.length > maxVisibleSteps ? 
-          (canvas.height - 60 - thumbSize) : 0;
-        
-        ctx.fillStyle = textColor;
-        ctx.fillRect(canvas.width - 8, 30 + scrollPosition, 3, thumbSize);
-      }
-    }
-      
-    visibleSteps.forEach((step, index) => {
-      
-      const y = 45 + (index * lineHeight);
-      
-      
-      if (y < 25 || y > canvas.height) return;
-      
-      
-      if (index === visibleSteps.length - 1 && visibleSteps.length > 0) {
-        
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.fillRect(5, y - lineHeight + 2, canvas.width - 10, lineHeight);
-        
-        
-        if (y > canvas.height - 30) {
-          
-          
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-          ctx.fillRect(canvas.width - 15, 5, 10, canvas.height - 10);
-        }
-      }
-      
-      
-      if (step.includes('[')) {
-        
-        const stepNum = step.substring(1, step.indexOf(']'));
-        const stepText = step.substring(step.indexOf(']') + 1);
-        
-        
-        ctx.fillStyle = dimTextColor;
-        ctx.fillText(`[${stepNum}]`, 10, y);
-        
-        
-        ctx.fillStyle = textColor;
-        ctx.fillText(stepText, 45, y);
-      } else {
-        
-        ctx.fillStyle = textColor;
-        ctx.fillText(step, 10, y);
-      }
-    });
-    
-    
-    if (currentAlgo) {
-      const cursorY = 45 + (visibleSteps.length * lineHeight);
-      
-      
-      const cursorBlinkRate = 800; 
-      const shouldShowCursor = Math.floor(Date.now() / cursorBlinkRate) % 2 === 0;
-      
-      
-      if (shouldShowCursor) {
-        ctx.fillStyle = textColor;
-        ctx.shadowBlur = 4;
-        ctx.fillText('_', 10, cursorY);
-      }
-    }
-    
-    
-    ctx.shadowBlur = 0;
+  function drawPseudocodeCanvas() {
+    const panel = pseudocodePanelRef.current;
+    if (!panel) return;
+    const activeAlgo = currentAlgoRef.current;
+    const pseudocode = getAlgorithmPseudocode(activeAlgo);
+    const highlightedLine = getHighlightedPseudocodeLine(activeAlgo, currentRawStepRef.current);
+    panel.innerHTML = pseudocode
+      .map((line, index) => {
+        const className =
+          index === highlightedLine
+            ? "visualizer-line visualizer-line-active"
+            : "visualizer-line";
+        return `<div class="${className}">${escapeHtml(line)}</div>`;
+      })
+      .join("");
   }
 
-  
-  
-  
-    function drawDrumGrid(rhythmPattern, currentStep) {
+  function drawSourcePanel() {
+    const panel = sourcePanelRef.current;
+    if (!panel) return;
+    const activeAlgo = currentAlgoRef.current;
+
+    panel.innerHTML = getAlgorithmSource(activeAlgo)
+      .map(
+        (line) =>
+          `<div class="visualizer-line visualizer-line-source">${escapeHtml(line)}</div>`
+      )
+      .join("");
+  }
+
+  function drawAlgorithmCanvas(stepText, stepsToDisplay = null) {
+    const panel = algorithmPanelRef.current;
+    if (!panel) return;
+    const activeAlgo = currentAlgoRef.current;
+    const visibleSteps = stepsToDisplay || displayedAlgoStepsRef.current;
+    panel.innerHTML = visibleSteps
+      .map((step, index) => {
+        const isLast = index === visibleSteps.length - 1;
+        const className =
+          isLast
+            ? "visualizer-line visualizer-line-current"
+            : "visualizer-line";
+
+        if (step.includes("[")) {
+          const stepNum = step.substring(1, step.indexOf("]"));
+          const formatted = formatStepAsPseudocode(
+            activeAlgo,
+            step.substring(step.indexOf("]") + 1).trim()
+          );
+          return `<div class="${className}"><span class="visualizer-line-label">[${escapeHtml(
+            stepNum
+          )}]</span> <span>${escapeHtml(formatted)}</span></div>`;
+        }
+
+        return `<div class="${className}">${escapeHtml(
+          formatStepAsPseudocode(activeAlgo, step)
+        )}</div>`;
+      })
+      .join("");
+  }
+
+  function formatStepAsPseudocode(algoName, rawStep) {
+    if (!rawStep) return "";
+
+    const step = rawStep.trim();
+
+    const directPatterns = [
+      [/^BinarySearch: left=(\d+), right=(\d+), mid=(\d+)$/, "mid <- floor((left + right) / 2)  // left=$1 right=$2 mid=$3"],
+      [/^LinearSearch: i=(\d+), freq=([\d.]+)$/, "visit A[$1]  // freq=$2"],
+      [/^Summation: i=(\d+), freq=([\d.]+), runningSum=([\d.]+)$/, "sum <- sum + A[$1]  // freq=$2 total=$3"],
+      [/^Initialize maxVal=([\d.]+)$/, "max <- A[0]  // $1"],
+      [/^Compare maxVal=([\d.]+) with scale\[(\d+)\]=([\d.]+)$/, "if A[$2] > max  // max=$1 value=$3"],
+      [/^New max => ([\d.]+)$/, "max <- current  // $1"],
+      [/^CountOccurrences: i=(\d+), freq=([\d.]+)$/, "if A[$1] == target  // freq=$2"],
+      [/^Match found => count=(\d+)$/, "count <- count + 1  // count=$1"],
+      [/^JumpSearch: Jumping from index (\d+) to (\d+)$/, "block <- block + sqrt(n)  // $1 -> $2"],
+      [/^JumpSearch: Linear search at index (\d+)$/, "scan block at i=$1"],
+      [/^JumpSearch: Found target ([\d.]+) Hz at index (\d+)$/, "return i  // target=$1 index=$2"],
+      [/^HeapInsert: append value=([\d.]+) at index=(\d+)$/, "heap[i] <- x  // value=$1 index=$2"],
+      [/^HeapInsert: compare parent=(\d+) \(([\d.]+)\) with child=(\d+) \(([\d.]+)\)$/, "if heap[parent($3)] < heap[$3]  // p=$1:$2 c=$3:$4"],
+      [/^HeapInsert: swap parent=(\d+) \(([\d.]+)\) with child=(\d+) \(([\d.]+)\)$/, "swap(heap[$1], heap[$3])"],
+      [/^HeapInsert: settled at index=(\d+)$/, "heap invariant restored at i=$1"],
+      [/^HeapInsert: settled at root$/, "heap invariant restored at root"],
+      [/^HeapPath: visit index=(\d+), value=([\d.]+)$/, "visit heap[$1]  // $2"],
+      [/^KSum: tuple=\[(.*)\], sum=([\d.]+)$/, "emit tuple($1)  // total=$2"],
+      [/^KSum: solution #(\d+) tuple=\[(.*)\], sum=([\d.]+)$/, "emitSolution(tuple=$2)  // #$1 total=$3"],
+      [/^ThreeWayPartition: assignment=\[(.*)\], sums=\[(.*)\]$/, "emit assignment($1)  // sums=$2"],
+      [/^ThreeWayPartition: solution #(\d+) assignment=\[(.*)\]$/, "emitSolution(assignment=$2)  // #$1"],
+      [/^Log Div: duration=(\d+), nextNoteIndex=(\d+)$/, "duration <- floor(duration / 2)  // duration=$1 idx=$2"],
+      [/^IterativeLog: index=(\d+) => freq ([\d.]+)$/, "i <- i * 2  // i=$1 freq=$2"],
+      [/^ReverseLogWalk: index=(\d+) => freq ([\d.]+)$/, "i <- floor(i / 2)  // i=$1 freq=$2"],
+      [/^RepeatedLogReduction: outer=(\d+), inner=(\d+), element=([\d.]+) Hz$/, "for log_i in 0..log n; for log_j in 0..log n  // o=$1 i=$2 val=$3"],
+      [/^RepeatedHalving: size=(\d+), element=([\d.]+) Hz$/, "size <- floor(sqrt(size))  // size=$1 val=$2"],
+      [/^Swap: ([\d.]+) with ([\d.]+)$/, "swap(x, y)  // $1 <-> $2"],
+      [/^Compare: ([\d.]+) and ([\d.]+)$/, "if left > right  // $1 vs $2"],
+      [/^Insert: ([\d.]+)$/, "key <- A[i]  // $1"],
+      [/^Move: ([\d.]+) to position (\d+)$/, "A[$2] <- A[$2 - 1]  // $1"],
+      [/^Split: left=\[(.*)\], right=\[(.*)\]$/, "split(A) -> left, right"],
+      [/^Merge: \[(.*)\] \+ \[(.*)\] => \[(.*)\]$/, "merge(left, right)"],
+      [/^Consider: \[([\d.]+)\] from (left|right)$/, "take next from $2  // $1"],
+      [/^Multiplying A\[(\d+)\]\[(\d+)\] \* B\[(\d+)\]\[(\d+)\] and adding to result\[(\d+)\]\[(\d+)\]$/, "C[$5][$6] <- C[$5][$6] + A[$1][$2] * B[$3][$4]"],
+      [/^Checking triplet: ([\d.]+), ([\d.]+), ([\d.]+) \(sum: ([\d.]+)\)$/, "if A[i] + A[j] + A[k] == target  // sum=$4"],
+      [/^KNestedLoops: tuple=\[(.*)\] => \[(.*)\]$/, "visit tuple($1)"],
+      [/^KTuples: indices=\[(.*)\] => \[(.*)\]$/, "emit tuple($1)"],
+      [/^TernaryRecursion: expand level=(\d+)$/, "recurse3(level=$1)"],
+      [/^TernaryRecursion: base case$/, "return"],
+      [/^Base3Strings: digits=\[(.*)\] => \[(.*)\]$/, "emit base3_string($1)"],
+      [/^Found derangement #(\d+): \[(.*)\]$/, "emit derangement  // #$1"],
+      [/^Ackermann\((\d+), (\d+)\) = Ackermann\((\d+), Ackermann\((\d+), (\d+)\)\)$/, "return A($3, A($4, $5))"],
+      [/^Ackermann\((\d+), (\d+)\) = Ackermann\((\d+), 1\)$/, "return A($3, 1)"],
+      [/^Ackermann\((\d+), (\d+)\) = (\d+)$/, "return $3"],
+      [/^DoubleExponential: Enumerating all binary strings of length 2\^(\d+) = (\d+)$/, "length <- 2^$1  // $2"],
+      [/^DoubleExponential: bits=\[(.*)\]$/, "emit binary_string($1)"],
+    ];
+
+    for (const [pattern, replacement] of directPatterns) {
+      if (pattern.test(step)) {
+        return step.replace(pattern, replacement);
+      }
+    }
+
+    if (step.startsWith("Base case:")) {
+      return step.replace("Base case:", "return").replace(" = ", "  // ");
+    }
+    if (step.startsWith("Even exponent:")) {
+      return step.replace("Even exponent:", "").trim();
+    }
+    if (step.startsWith("Odd exponent:")) {
+      return step.replace("Odd exponent:", "").trim();
+    }
+    if (step.startsWith("Intermediate result:")) {
+      return step.replace("Intermediate result:", "value <-").trim();
+    }
+    if (step.startsWith("Result:")) {
+      return step.replace("Result:", "return").trim();
+    }
+    if (step.startsWith("Found target")) {
+      return `return target  // ${step}`;
+    }
+    if (step.startsWith("Final sum")) {
+      return step.replace("Final sum", "return sum");
+    }
+    if (step.startsWith("Maximum is")) {
+      return step.replace("Maximum is", "return max");
+    }
+    if (step.startsWith("No ") || step.includes("not found") || step.includes("empty")) {
+      return `// ${step}`;
+    }
+
+    return `// ${step}`;
+  }
+
+  function getAlgorithmPseudocode(algorithmMeta) {
+  if (!algorithmMeta) {
+    return ["function algorithm(...)", "  // pseudocode unavailable", "  // trace shown at right"];
+  }
+  return resolveAlgorithmLines(algorithmMeta.pseudocode, { sortOrder });
+}
+
+function getAlgorithmSource(algorithmMeta) {
+  if (!algorithmMeta) {
+    return ["// implementation source unavailable"];
+  }
+  return resolveAlgorithmLines(algorithmMeta.source, { sortOrder });
+}
+
+function getHighlightedPseudocodeLine(algorithmMeta, rawStep) {
+  if (!algorithmMeta?.highlightLine) return -1;
+  return algorithmMeta.highlightLine(rawStep || "", { sortOrder });
+}
+
+  function drawDrumGrid(rhythmPattern, currentStep) {
     const canvas = drumCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-
-    const width = canvas.width;
-    const height = canvas.height;
+    const { width, height } = getCanvasMetrics(canvas, ctx);
     ctx.clearRect(0, 0, width, height);
     
     ctx.fillStyle = "#000000";
@@ -847,89 +937,109 @@ const [selectEven, setSelectEven] = useState(true);
   
   
   
+  const updateVisualsForStep = (step) => {
+    const currentPatternLength = patternByStepRef.current.length;
+    if (!audioCtx || currentPatternLength === 0) return;
+
+    const wrappedStep = step % currentPatternLength;
+    const notesToPlay = patternByStepRef.current[wrappedStep] || [];
+    drawAudioCanvas(notesToPlay.map((noteItem) => noteItem.freq));
+
+    const currentAlgoStepText =
+      algoStepsRef.current.length > 0
+        ? algoStepsRef.current[step % algoStepsRef.current.length] || ""
+        : "";
+    currentRawStepRef.current = currentAlgoStepText;
+
+    if (currentAlgoStepText && currentAlgoStepText.trim() !== "") {
+      const formattedStepText = `[${step}] ${currentAlgoStepText}`;
+      const currentDisplayedSteps = displayedAlgoStepsRef.current;
+
+      if (!currentDisplayedSteps.includes(formattedStepText)) {
+        const newSteps = [...currentDisplayedSteps, formattedStepText];
+        const panel = algorithmPanelRef.current;
+        const lineHeight = 20;
+        const availableHeight = panel ? (panel.clientHeight - 24) : 240;
+        const maxVisibleSteps = Math.floor(availableHeight / lineHeight);
+        const effectiveMaxSteps = Math.max(maxVisibleSteps, MAX_DISPLAYED_STEPS);
+
+        displayedAlgoStepsRef.current =
+          newSteps.length > effectiveMaxSteps
+            ? newSteps.slice(-effectiveMaxSteps)
+            : newSteps;
+      }
+      }
+
+      drawPseudocodeCanvas();
+      drawSourcePanel();
+      drawAlgorithmCanvas("", displayedAlgoStepsRef.current);
+      drawDrumGrid(rhythmPatternRef.current, wrappedStep);
+  };
+
   const startClock = () => {
-    
     stopClock();
 
-    const msPerBeat = 60000 / bpm;
-    const tickInterval = msPerBeat / TICKS_PER_BEAT;
+    if (!audioCtx || patternByStepRef.current.length === 0) return;
 
-    stepRef.current = 0;
-    const intervalId = setInterval(() => {
-      const step = stepRef.current;
-      const wrappedStep = step % patternLength;
+    const secondsPerBeat = 60 / bpm;
+    const tickDuration = secondsPerBeat / TICKS_PER_BEAT;
+    const lookAheadMs = 50;
+    const scheduleAheadTime = 0.35;
 
-      
-      const notesToPlay = activePattern.filter((p) => p.step === wrappedStep);
+    scheduledStepRef.current = 0;
+    transportStartTimeRef.current = audioCtx.currentTime + 0.1;
+    nextNoteTimeRef.current = transportStartTimeRef.current;
+    tickDurationRef.current = tickDuration;
+    lastVisualStepRef.current = -1;
+
+    const scheduleStep = (step, scheduledTime) => {
+      const currentPatternLength = patternByStepRef.current.length;
+      if (currentPatternLength === 0) return;
+      const wrappedStep = step % currentPatternLength;
+      const notesToPlay = patternByStepRef.current[wrappedStep] || [];
+
       notesToPlay.forEach((noteItem) => {
-        playNote(noteItem.freq, tickInterval * 0.9);
+        playNote(noteItem.freq, scheduledTime, tickDuration * 0.9);
       });
-      
-      
-      drawAudioCanvas(notesToPlay.map((p) => p.freq));
-      
-      
-      const algoStepIndex = step % algoStepsLength;
-      const currentAlgoStepText = algoSteps[algoStepIndex] || "";
-        
-      
-      if (currentAlgoStepText && currentAlgoStepText.trim() !== "") {
-        
-        const formattedStepText = `[${step}] ${currentAlgoStepText}`;
-        
-        
-        const isDuplicate = displayedAlgoSteps.includes(formattedStepText);
-        
-        if (!isDuplicate) {
-          
-          const newSteps = [...displayedAlgoSteps, formattedStepText];
-          
-          
-          const canvas = algorithmCanvasRef.current;
-          const lineHeight = 18;  
-          const availableHeight = canvas ? (canvas.height - 60) : 180; 
-          const maxVisibleSteps = Math.floor(availableHeight / lineHeight);
-          
-          
-          const effectiveMaxSteps = Math.max(maxVisibleSteps, MAX_DISPLAYED_STEPS);
-          
-          
-          const updatedSteps = newSteps.length > effectiveMaxSteps 
-            ? newSteps.slice(-effectiveMaxSteps) 
-            : newSteps;
-          
-          
-          setDisplayedAlgoSteps(updatedSteps);
-          
-          
-          
-          const tempSteps = [...updatedSteps];
-          drawAlgorithmCanvas("", tempSteps);
-        } else {
-          
-          drawAlgorithmCanvas("", displayedAlgoSteps);
-        }
-      } else {
-        
-        drawAlgorithmCanvas("", displayedAlgoSteps);
-      }
 
-      
-      const drumStep = rhythmPattern[wrappedStep];
+      const drumStep = rhythmPatternRef.current[wrappedStep];
       if (drumStep) {
-        
-        playDrum(audioCtx, drumStep, 1, drumGains[drumStep]);
+        playDrum(audioCtx, drumStep, 1, drumGains[drumStep], scheduledTime);
+      }
+    };
+
+    const scheduler = () => {
+      const currentPatternLength = patternByStepRef.current.length;
+      if (algorithmStreamRef.current && !algorithmStreamDoneRef.current) {
+        const remainingSteps = currentPatternLength - scheduledStepRef.current;
+        if (remainingSteps < 16) {
+          consumeAlgorithmStream(16, 12);
+        }
       }
 
-      
-      drawDrumGrid(rhythmPattern, wrappedStep);
-      
-      
-      stepRef.current = step + 1;
-    }, tickInterval);
-    
-    
-    clockIdRef.current = intervalId;
+      if (patternByStepRef.current.length === 0) return;
+
+      while (nextNoteTimeRef.current < audioCtx.currentTime + scheduleAheadTime) {
+        const currentStep = scheduledStepRef.current;
+        scheduleStep(currentStep, nextNoteTimeRef.current);
+        nextNoteTimeRef.current += tickDuration;
+        scheduledStepRef.current = currentStep + 1;
+      }
+    };
+
+    scheduler();
+    clockIdRef.current = setInterval(scheduler, lookAheadMs);
+    visualClockIdRef.current = setInterval(() => {
+      if (!audioCtx || tickDurationRef.current <= 0) return;
+      const elapsed = audioCtx.currentTime - transportStartTimeRef.current;
+      if (elapsed < 0) return;
+
+      const visualStep = Math.floor(elapsed / tickDurationRef.current);
+      if (visualStep === lastVisualStepRef.current) return;
+
+      lastVisualStepRef.current = visualStep;
+      updateVisualsForStep(visualStep);
+    }, 50);
   };
   
   const stopClock = () => {
@@ -937,48 +1047,53 @@ const [selectEven, setSelectEven] = useState(true);
       clearInterval(clockIdRef.current);
       clockIdRef.current = null;
     }
-    
-    
-    
-    
-    setStepOffset(0); 
-    drawAlgorithmCanvas("", displayedAlgoSteps); 
+    if (visualClockIdRef.current) {
+      clearInterval(visualClockIdRef.current);
+      visualClockIdRef.current = null;
+    }
+
+    drawAlgorithmCanvas("", displayedAlgoStepsRef.current); 
+    drawPseudocodeCanvas();
+    drawSourcePanel();
     drawDrumGrid([], -1);
   };
    
   
   
-  const setupAlgorithm = (algoName, algorithmData) => {
+  const setupAlgorithm = (algorithmEntry, algorithmData) => {
     
     stopClock();
     
     
-    setDisplayedAlgoSteps([]);
+    displayedAlgoStepsRef.current = [];
     
     
+    drawPseudocodeCanvas();
+    drawSourcePanel();
     drawAlgorithmCanvas("", []);
       
     
     setTimeout(() => {
-      
-      setCurrentAlgo(algoName);
-      setAlgoSteps(algorithmData.steps);
-      setAlgoStepsLength(algorithmData.steps.length);
-      setStepOffset(0); 
+      currentAlgorithmEntryRef.current = algorithmEntry;
+      currentAlgoRef.current = algorithmEntry.meta;
+      algoStepsRef.current = [...(algorithmData.steps || [])];
+      algorithmNotesRef.current = [...(algorithmData.notes || [])];
+      algorithmStreamRef.current = algorithmData.stream || null;
+      algorithmStreamDoneRef.current = !algorithmData.stream;
+      setActiveVerificationLines(describeAlgorithmEntry(algorithmEntry));
       stepRef.current = 0; 
-  
-      
-      const pattern = createPatternFromNotes(algorithmData.notes, 1);
-      setActivePattern(pattern);
-      setPatternLength(pattern.length);
-  
-      
-      const newDrums = generateDrumPattern(pattern.length, drumVariation, algorithmData);
-      setRhythmPattern(newDrums);
+
+      if (algorithmStreamRef.current) {
+        consumeAlgorithmStream(24, 24);
+      } else {
+        rebuildPlaybackBuffers();
+      }
       
       
+      drawPseudocodeCanvas();
+      drawSourcePanel();
       drawAlgorithmCanvas("", []); 
-      drawDrumGrid(newDrums, -1);
+      drawDrumGrid(rhythmPatternRef.current, -1);
       drawAudioCanvas([]);
       
       
@@ -989,279 +1104,39 @@ const [selectEven, setSelectEven] = useState(true);
     }, 100);
   }; 
 
-  
-  
-  
+  const startAlgorithmById = (algorithmId, options = {}) => {
+    const algorithmEntry = getAlgorithmEntry(algorithmId);
+    if (!algorithmEntry) {
+      console.error(`Algorithm registry entry not found for ${algorithmId}`);
+      return;
+    }
 
-const startAccessElement = () => {
-  const data = getAccessElementData(
-    getSafeSelectedScale(),
-    numNotes 
-  );
-  setupAlgorithm("Access Element (O(1))", data);
-};
-
-const startCheckEvenOdd = () => {
-  const data = getCheckEvenOddData(
-    getSafeSelectedScale(),
-    numNotes, 
-    selectEven 
-  );
-  setupAlgorithm("Check Even/Odd (O(1))", data);
-};
-
-const startFirstElement = () => {
-  const data = getFirstElementData(
-    getSafeSelectedScale()
-  );
-  setupAlgorithm("First Element (O(1))", data);
-};
-
-const startRepeatedHalving = () => {
-  const data = getRepeatedHalvingData(
-    getSafeSelectedScale()
-  );
-  setupAlgorithm("Repeated Halving (O(log log n))", data);
-};
-
-  const startBinarySearch = () => {
-    const data = getBinarySearchData(
-      getSafeSelectedScale()
+    const algorithmData = algorithmEntry.run(
+      getAlgorithmExecutionContext(),
+      options
     );
-    setupAlgorithm("Binary Search (O(log n))", data);
-  };
-
-  const startExponentiationBySquaring = () => {
-    const scale = getSafeSelectedScale();
-    const exponent = 10; 
-    const data = getExponentiationBySquaringData(scale, exponent);
-    setupAlgorithm("Exponentiation by Squaring (O(log n))", data);
-  };
-  const startLogDivision = () => {
-    const data = getLogDivData(
-      getSafeSelectedScale()
-    );
-    setupAlgorithm("Log Division (O(log n))", data);
-  };
-
-  const startIterativeLog = () => {
-    const data = getIterativeLogData(
-      getSafeSelectedScale()
-    );
-    setupAlgorithm("Iterative Log (O(log n))", data);
-  };
-
-  const startExtraLog = () => {
-    const data = getExtraLogData(
-      getSafeSelectedScale()
-    );
-    setupAlgorithm("Extra Pattern (O(log n))", data);
-  };
-  
-  const startRepeatedLogReduction = () => {
-    const data = getRepeatedLogReductionData(
-      getSafeSelectedScale()
-    );
-    setupAlgorithm("Repeated Log Reduction (O((log n)^2))", data);
-  };
-
-const startRandomSampling = () => {
-  const data = getRandomSamplingData(
-    getSafeSelectedScale()
-  );
-  setupAlgorithm("Random Sampling (O(sqrt(n)))", data);
-};
-
-const startJumpSearch = () => {
-  const scale = getSafeSelectedScale();
-  const target = scale[0]; 
-  const data = getJumpSearchData(
-    scale,
-    target
-  );
-  setupAlgorithm("Jump Search (O(sqrt(n)))", data);
-};
-
-  
-  const startLinearSearch = () => {
-    const data = getLinearSearchData(
-      getSafeSelectedScale()
-    );
-    setupAlgorithm("Linear Search (O(n))", data);
-  };
-
-  const startSumOfElements = () => {
-    const data = getSumOfElementsData(
-      getSafeSelectedScale()
-    );
-    setupAlgorithm("Sum of Elements (O(n))", data);
-  };
-
-  const startFindMax = () => {
-    const data = getFindMaxData(
-      getSafeSelectedScale()
-    );
-    setupAlgorithm("Find Maximum (O(n))", data);
-  };
-  const startCountOccurrences = () => {
-    const data = getCountOccurrencesData(
-      getSafeSelectedScale()
-    );
-    setupAlgorithm("Count Occurrences (O(n))", data);
-  };
-
-    
-    const startMergeSort = () => {
-      const data = getMergeSortData(
-        getSafeSelectedScale()
-      );
-      setupAlgorithm("Merge Sort (O(n log n))", data);
-    };
-  
-    const startHeapSort = () => {
-      const data = getHeapSortData(
-        getSafeSelectedScale()
-      );
-      setupAlgorithm("Heap Sort (O(n log n))", data);
-    };
-    const startQuickSort = () => {
-      const data = getQuickSortData(
-        getSafeSelectedScale()
-      );
-      setupAlgorithm("Quick Sort (O(n log n))", data);
-    };
-
-        const startBubbleSort = () => {
-      const data = getBubbleSortData(
-        getSafeSelectedScale()
-      );
-      setupAlgorithm("Bubble Sort (O(n^2))", data);
-    };
-    
-    const startSelectionSort = () => {
-      const data = getSelectionSortData(
-        getSafeSelectedScale()
-      );
-      setupAlgorithm("Selection Sort (O(n^2))", data);
-    };
-      const startInsertionSort = () => {
-      const data = getInsertionSortData(
-        getSafeSelectedScale()
-      );
-      setupAlgorithm("Insertion Sort (O(n^2))", data);
-    };
-
-const startMatrixMultiplication = () => {
-  const data = getMatrixMultiplicationData(
-    getSafeSelectedScale()
-  );
-  setupAlgorithm("Matrix Multiplication (O(n^3))", data);
-};
-
-const startThreeSum = () => {
-  const target = 1000; 
-  const data = getThreeSumData(
-    getSafeSelectedScale(),
-    target
-  );
-  setupAlgorithm("3-Sum Problem (O(n^3))", data);
-};
-
-const startPolynomialEvaluation = () => {
-  const coefficients = [1, -2, 3]; 
-  const x = 2; 
-  const data = getPolynomialEvaluationData(
-    getSafeSelectedScale(),
-    coefficients,
-    x
-  );
-  setupAlgorithm("Polynomial Evaluation (O(n^k))", data);
-};
-
-const startMatrixExponentiation = () => {
-  const k = 3; 
-  const data = getMatrixExponentiationData(
-    getSafeSelectedScale(),
-    k
-  );
-  setupAlgorithm("Matrix Exponentiation (O(n^k))", data);
-};
-
-const startFibonacci = () => {
-  const n = 10; 
-  const data = getFibonacciData(
-    getSafeSelectedScale(),
-    n
-  );
-  setupAlgorithm("Fibonacci Sequence (O(2^n))", data);
-};
-
-const startSubsetSum = () => {
-  const targetSum = 1000; 
-  const data = getSubsetSumData(
-    getSafeSelectedScale(),
-    targetSum
-  );
-  setupAlgorithm("Subset Sum Problem (O(2^n))", data);
-};
-
-const startTowersOfHanoi = () => {
-  const n = 3; 
-  const data = getTowersOfHanoiData(
-    getSafeSelectedScale(),
-    n
-  );
-  setupAlgorithm("Towers of Hanoi (O(3^n))", data);
-};
-
-const startPermutations = () => {
-  const data = getPermutationsData(
-    getSafeSelectedScale()
-  );
-  setupAlgorithm("Permutations (O(n!))", data);
-};
-
-const startTravelingSalesman = () => {
-  const data = getTravelingSalesmanData(
-    getSafeSelectedScale()
-  );
-  setupAlgorithm("Traveling Salesman Problem (O(n!))", data);
-};
-
-const startDerangement = () => {
-    const data = getDerangementData(
-        getSafeSelectedScale()
-    );
-    setupAlgorithm("Derangement Problem (O(n!/k^n))", data);
-};
-
-const startAckermann = () => {
-    const m = 2; 
-    const n = 2; 
-    const data = getAckermannData(
-        getSafeSelectedScale(),
-        m,
-        n
-    );
-    setupAlgorithm("Ackermann Function (O(A(n, n)))", data);
-};
-
-  const startDoubleExponential = () => {
-    const scale = getSafeSelectedScale();
-    const data = getDoubleExponentialData(scale);
-    setupAlgorithm("Double Exponential (O(2^(2^n)))", data);
+    setupAlgorithm(algorithmEntry, algorithmData);
   };
   
   
   
   const stopPlayback = () => {
-    setCurrentAlgo(null);
+    currentAlgorithmEntryRef.current = null;
+    currentAlgoRef.current = null;
     stopClock();
-    setActivePattern([]);
-    setPatternLength(0);
-    setAlgoSteps([]);
-    setAlgoStepsLength(0);
-    setRhythmPattern([]);
+    algorithmNotesRef.current = [];
+    algorithmStreamRef.current = null;
+    algorithmStreamDoneRef.current = true;
+    patternByStepRef.current = [];
+    rhythmPatternRef.current = [];
+    algoStepsRef.current = [];
+    displayedAlgoStepsRef.current = [];
+    setActiveVerificationLines(describeAlgorithmEntry(null));
+    drawAudioCanvas([]);
+    drawPseudocodeCanvas();
+    drawSourcePanel();
+    drawAlgorithmCanvas("", []);
+    drawDrumGrid([], -1);
   };
   
   
@@ -1272,19 +1147,8 @@ const startAckermann = () => {
         const container = audioCanvasRef.current.parentElement;
         if (container) {
           const width = container.clientWidth;
-          const height = Math.min(200, container.clientHeight || width / 2);
-          audioCanvasRef.current.width = width;
-          audioCanvasRef.current.height = height;
-        }
-      }
-      
-      if (algorithmCanvasRef.current) {
-        const container = algorithmCanvasRef.current.parentElement;
-        if (container) {
-          const width = container.clientWidth;
-          const height = Math.min(200, container.clientHeight || width / 2);
-          algorithmCanvasRef.current.width = width;
-          algorithmCanvasRef.current.height = height;
+          const height = Math.max(160, container.clientHeight || Math.round(width * 2.2));
+          setCanvasDisplaySize(audioCanvasRef.current, width, height);
         }
       }
       
@@ -1292,21 +1156,58 @@ const startAckermann = () => {
         const container = drumCanvasRef.current.parentElement;
         if (container) {
           const width = container.clientWidth;
-          const height = Math.min(200, container.clientHeight || width / 2);
-          drumCanvasRef.current.width = width;
-          drumCanvasRef.current.height = height;
+          const height = Math.min(240, container.clientHeight || width / 3);
+          setCanvasDisplaySize(drumCanvasRef.current, width, height);
         }
       }
     };
 
     handleResize();
-    
-    window.addEventListener('resize', handleResize);
+    drawPseudocodeCanvas();
+    drawAlgorithmCanvas("", displayedAlgoStepsRef.current);
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            if (resizeTimeoutRef.current) {
+              clearTimeout(resizeTimeoutRef.current);
+            }
+            resizeTimeoutRef.current = setTimeout(handleResize, 50);
+          })
+        : null;
+
+    [
+      audioCanvasRef.current?.parentElement,
+      pseudocodePanelRef.current?.parentElement,
+      algorithmPanelRef.current?.parentElement,
+      drumCanvasRef.current?.parentElement,
+    ]
+      .filter(Boolean)
+      .forEach((element) => resizeObserver?.observe(element));
+
+    const debouncedResize = () => {
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+      resizeTimeoutRef.current = setTimeout(handleResize, 120);
+    };
+
+    window.addEventListener('resize', debouncedResize);
     
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', debouncedResize);
+      resizeObserver?.disconnect();
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    drawPseudocodeCanvas();
+    drawSourcePanel();
+  }, [sortOrder]);
+
+  const verificationPanelText = activeVerificationLines.join("\n");
   
   
   
@@ -1393,7 +1294,7 @@ const startAckermann = () => {
                     value={selectedScaleVariation}
                     onChange={(e) => setSelectedScaleVariation(e.target.value)}
                   >
-                    {getAvailableScaleVariations().map((variation) => (
+                    {availableScaleVariations.map((variation) => (
                       <option key={variation.value} value={variation.value}>
                         {variation.label}
                       </option>
@@ -1748,24 +1649,25 @@ const startAckermann = () => {
           <div className="dos-panel">            <h3>Big-O Time Complexity <span className="blink">_</span></h3>
             <nav className="dos-nav">
               <div className="btn-group btn-group-sm dos-btn-group flex-wrap" role="group">
-                <button className="btn dos-btn" onClick={() => setSelectedTab("constant")}>O(1)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("doublelogarithmic")}>O(log log n)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("logarithmic")}>O(log n)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("polylogarithmic")}>O((log n)^2)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("sublinear")}>O(sqrt(n))</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("linear")}>O(n)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("linearithmic")}>O(n log n)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("quadratic")}>O(n^2)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("cubic")}>O(n^3)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("polynomial")}>O(n^k)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("exponential")}>O(2^n)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("exponentialBaseC")}>O(c^n), c&gt;2</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("factorial")}>O(n!)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("subfactorial")}>O(n!/k^n)</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("ackermann")}>O(A(n, n))</button>
-                <button className="btn dos-btn" onClick={() => setSelectedTab("doubleExponential")}>O(2^(2^n))</button>
+                {COMPLEXITY_TABS.map((tab) => (
+                  <button key={tab.id} className="btn dos-btn" onClick={() => setSelectedTab(tab.id)}>
+                    {tab.navLabel}
+                  </button>
+                ))}
               </div>
             </nav>
+            <div className="form-group dos-form-group mt-3 mb-3">
+              <label htmlFor="globalOrder">Order:</label>
+              <select
+                id="globalOrder"
+                className="form-control dos-control"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+              >
+                <option value="ascending">Ascending</option>
+                <option value="descending">Descending</option>
+              </select>
+            </div>
             
             <div className="tab-content dos-tab-content mt-3">              {}              {selectedTab === "constant" && (
                 <div className="dos-tab-pane">
@@ -1776,7 +1678,7 @@ const startAckermann = () => {
                     </button>
                   </div>
                   <div className="row">
-                    <div className="col-md-6">                      <button className="btn dos-btn" onClick={startAccessElement} disabled={!audioCtx}>
+                    <div className="col-md-6">                      <button className="btn dos-btn" onClick={() => startAlgorithmById("accessElement")} disabled={!audioCtx}>
                         Access Element
                       </button>
                       <p className="mt-2 dos-description">
@@ -1793,11 +1695,11 @@ const startAckermann = () => {
                         />
                       </div>
                     </div>
-                    <div className="col-md-6">                      <button className="btn dos-btn" onClick={startCheckEvenOdd} disabled={!audioCtx}>
-                        Check Even/Odd
+                    <div className="col-md-6">                      <button className="btn dos-btn" onClick={() => startAlgorithmById("parityCheck")} disabled={!audioCtx}>
+                        Parity Check
                       </button>
                       <p className="mt-2 dos-description">
-                        Simple modulo check for parity takes constant time.
+                        Constant-time parity test on an integer index.
                       </p>
                       <div className="form-group dos-form-group mt-2">
                         <div className="form-check">
@@ -1830,7 +1732,7 @@ const startAckermann = () => {
                     </div>
                   </div>
                   <div className="row mt-2">                    <div className="col-12">
-                      <button className="btn dos-btn" onClick={startFirstElement} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("firstElement")} disabled={!audioCtx}>
                         First Element
                       </button>
                       <p className="mt-2 dos-description">
@@ -1851,11 +1753,11 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startRepeatedHalving} disabled={!audioCtx}>
-                        Repeated Halving
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("interpolationSearch")} disabled={!audioCtx}>
+                        Interpolation Search
                       </button>
                       <p className="mt-2 dos-description">
-                        A technique where the problem size is repeatedly halved, but only the log of the halved value matters.
+                        Canonical average-case O(log log n) search on sorted, near-uniform data.
                       </p>
                     </div>
                   </div>
@@ -1872,7 +1774,7 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startBinarySearch} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("binarySearch")} disabled={!audioCtx}>
                         Binary Search
                       </button>
                       <p className="mt-2 dos-description">
@@ -1880,7 +1782,7 @@ const startAckermann = () => {
                       </p>
                     </div>
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startExponentiationBySquaring} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("exponentiationBySquaring")} disabled={!audioCtx}>
                         Exponentiation by Squaring
                       </button>
                       <p className="mt-2 dos-description">
@@ -1889,27 +1791,27 @@ const startAckermann = () => {
                     </div>
                   </div>
                   <div className="row mt-2">                    <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startLogDivision} disabled={!audioCtx}>
-                        Log Division
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("euclideanAlgorithm")} disabled={!audioCtx}>
+                        Euclidean Algorithm
                       </button>
                       <p className="mt-2 dos-description">
-                        Divide a number repeatedly until reaching 1.
+                        Compute the greatest common divisor by repeated remainder reduction.
                       </p>
                     </div>
                     <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startIterativeLog} disabled={!audioCtx}>
-                        Iterative Log
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("binaryHeapInsert")} disabled={!audioCtx}>
+                        Binary Heap Insert
                       </button>
                       <p className="mt-2 dos-description">
-                        Iteratively compute logarithmic values.
+                        Insert into a max-heap and bubble upward until the heap invariant is restored.
                       </p>
                     </div>
                     <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startExtraLog} disabled={!audioCtx}>
-                        Extra Pattern
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("heapRootPath")} disabled={!audioCtx}>
+                        Heap Root Path
                       </button>
                       <p className="mt-2 dos-description">
-                        Alternative logarithmic pattern generation.
+                        Follow parent indices from a node in an implicit binary heap array back to the root.
                       </p>
                     </div>
                   </div>
@@ -1926,11 +1828,11 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startRepeatedLogReduction} disabled={!audioCtx}>
-                        Repeated Log Reduction
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("fenwick2d")} disabled={!audioCtx}>
+                        2D Fenwick Tree Query
                       </button>
                       <p className="mt-2 dos-description">
-                        Algorithms with nested logarithmic operations.
+                        Query a 2D Binary Indexed Tree in O(log^2 n).
                       </p>
                     </div>
                   </div>
@@ -1947,19 +1849,19 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startRandomSampling} disabled={!audioCtx}>
-                        Random Sampling
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("sqrtDecomposition")} disabled={!audioCtx}>
+                        Sqrt Decomposition Query
                       </button>
                       <p className="mt-2 dos-description">
-                        Select √n elements randomly from a population.
+                        Answer a range query using sqrt decomposition blocks.
                       </p>
                     </div>
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startJumpSearch} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("jumpSearch")} disabled={!audioCtx}>
                         Jump Search
                       </button>
                       <p className="mt-2 dos-description">
-                        Search by jumping ahead by fixed steps of size √n.
+                        Canonical sublinear search by jumping ahead in sqrt(n)-sized blocks.
                       </p>
                     </div>
                   </div>
@@ -1976,7 +1878,7 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startLinearSearch} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("linearSearch")} disabled={!audioCtx}>
                         Linear Search
                       </button>
                       <p className="mt-2 dos-description">
@@ -1984,7 +1886,7 @@ const startAckermann = () => {
                       </p>
                     </div>
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startSumOfElements} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("sumOfElements")} disabled={!audioCtx}>
                         Sum of Elements
                       </button>
                       <p className="mt-2 dos-description">
@@ -1993,7 +1895,7 @@ const startAckermann = () => {
                     </div>
                   </div>
                   <div className="row mt-2">                    <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startFindMax} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("findMaximum")} disabled={!audioCtx}>
                         Find Maximum
                       </button>
                       <p className="mt-2 dos-description">
@@ -2001,7 +1903,7 @@ const startAckermann = () => {
                       </p>
                     </div>
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startCountOccurrences} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("countOccurrences")} disabled={!audioCtx}>
                         Count Occurrences
                       </button>
                       <p className="mt-2 dos-description">
@@ -2022,25 +1924,40 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startMergeSort} disabled={!audioCtx}>
-                        Merge Sort
-                      </button>
+                      <div className="dos-btn-group">
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("mergeSort")} disabled={!audioCtx}>
+                          Merge Sort
+                        </button>
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("mergeSort", { refreshInput: true })} disabled={!audioCtx}>
+                          RESORT
+                        </button>
+                      </div>
                       <p className="mt-2 dos-description">
                         Divide, sort, and merge approach.
                       </p>
                     </div>
                     <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startHeapSort} disabled={!audioCtx}>
-                        Heap Sort
-                      </button>
+                      <div className="dos-btn-group">
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("heapSort")} disabled={!audioCtx}>
+                          Heap Sort
+                        </button>
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("heapSort", { refreshInput: true })} disabled={!audioCtx}>
+                          RESORT
+                        </button>
+                      </div>
                       <p className="mt-2 dos-description">
                         Sort using a binary heap data structure.
                       </p>
                     </div>
                     <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startQuickSort} disabled={!audioCtx}>
-                        Quick Sort
-                      </button>
+                      <div className="dos-btn-group">
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("quickSort")} disabled={!audioCtx}>
+                          Quick Sort
+                        </button>
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("quickSort", { refreshInput: true })} disabled={!audioCtx}>
+                          RESORT
+                        </button>
+                      </div>
                       <p className="mt-2 dos-description">
                         Partition and conquer sorting algorithm.
                       </p>
@@ -2059,25 +1976,40 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startBubbleSort} disabled={!audioCtx}>
-                        Bubble Sort
-                      </button>
+                      <div className="dos-btn-group">
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("bubbleSort")} disabled={!audioCtx}>
+                          Bubble Sort
+                        </button>
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("bubbleSort", { refreshInput: true })} disabled={!audioCtx}>
+                          RESORT
+                        </button>
+                      </div>
                       <p className="mt-2 dos-description">
                         Repeatedly swap adjacent elements if they are in wrong order.
                       </p>
                     </div>
                     <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startSelectionSort} disabled={!audioCtx}>
-                        Selection Sort
-                      </button>
+                      <div className="dos-btn-group">
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("selectionSort")} disabled={!audioCtx}>
+                          Selection Sort
+                        </button>
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("selectionSort", { refreshInput: true })} disabled={!audioCtx}>
+                          RESORT
+                        </button>
+                      </div>
                       <p className="mt-2 dos-description">
                         Find smallest element and place at the beginning.
                       </p>
                     </div>
                     <div className="col-md-4">
-                      <button className="btn dos-btn" onClick={startInsertionSort} disabled={!audioCtx}>
-                        Insertion Sort
-                      </button>
+                      <div className="dos-btn-group">
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("insertionSort")} disabled={!audioCtx}>
+                          Insertion Sort
+                        </button>
+                        <button className="btn dos-btn" onClick={() => startAlgorithmById("insertionSort", { refreshInput: true })} disabled={!audioCtx}>
+                          RESORT
+                        </button>
+                      </div>
                       <p className="mt-2 dos-description">
                         Build sorted array one element at a time.
                       </p>
@@ -2096,7 +2028,7 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startMatrixMultiplication} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("matrixMultiplication")} disabled={!audioCtx}>
                         Matrix Multiplication
                       </button>
                       <p className="mt-2 dos-description">
@@ -2104,7 +2036,7 @@ const startAckermann = () => {
                       </p>
                     </div>
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startThreeSum} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("threeSum")} disabled={!audioCtx}>
                         3-Sum Problem
                       </button>
                       <p className="mt-2 dos-description">
@@ -2125,19 +2057,19 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startPolynomialEvaluation} disabled={!audioCtx}>
-                        Polynomial Evaluation
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("kCliqueSearch")} disabled={!audioCtx}>
+                        k-Clique Search
                       </button>
                       <p className="mt-2 dos-description">
-                        Standard evaluation of a polynomial with naive approach.
+                        Brute-force search for a clique of fixed size k.
                       </p>
                     </div>
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startMatrixExponentiation} disabled={!audioCtx}>
-                        Matrix Exponentiation
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("kSumEnumeration")} disabled={!audioCtx}>
+                        k-SUM Search
                       </button>
                       <p className="mt-2 dos-description">
-                        Raise a matrix to a power with naive approach.
+                        Enumerate all length-k tuples and test each one against a deterministic target sum.
                       </p>
                     </div>
                   </div>
@@ -2154,7 +2086,7 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startFibonacci} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("fibonacci")} disabled={!audioCtx}>
                         Fibonacci (recursive)
                       </button>
                       <p className="mt-2 dos-description">
@@ -2162,7 +2094,7 @@ const startAckermann = () => {
                       </p>
                     </div>
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startSubsetSum} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("subsetSum")} disabled={!audioCtx}>
                         Subset Sum Problem
                       </button>
                       <p className="mt-2 dos-description">
@@ -2183,19 +2115,19 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startTowersOfHanoi} disabled={!audioCtx}>
-                        Towers of Hanoi
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("graph3Coloring")} disabled={!audioCtx}>
+                        Graph 3-Coloring
                       </button>
                       <p className="mt-2 dos-description">
-                        Solve the classic Tower of Hanoi puzzle (3^n operations).
+                        Brute-force graph 3-coloring by trying 3 colors per vertex.
                       </p>
                     </div>
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startPermutations} disabled={!audioCtx}>
-                        Generate Permutations
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("threeWayPartition")} disabled={!audioCtx}>
+                        Three-Way Partition Search
                       </button>
                       <p className="mt-2 dos-description">
-                        Generate all possible arrangements of elements.
+                        Enumerate bucket assignments and test whether all three bucket sums are equal. Input bounded to 5 items for interactive visualization.
                       </p>
                     </div>
                   </div>
@@ -2212,11 +2144,11 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startTravelingSalesman} disabled={!audioCtx}>
-                        Traveling Salesman
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("travelingSalesman")} disabled={!audioCtx}>
+                        Traveling Salesman [bounded]
                       </button>
                       <p className="mt-2 dos-description">
-                        Find the shortest possible route visiting all cities exactly once.
+                        Canonical factorial exemplar, bounded and streamed for interactivity.
                       </p>
                     </div>
                   </div>
@@ -2233,11 +2165,11 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startDerangement} disabled={!audioCtx}>
-                        Derangement Problem
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("derangement")} disabled={!audioCtx}>
+                        Derangement Problem [bounded]
                       </button>
                       <p className="mt-2 dos-description">
-                        Count permutations where no element appears in its original position.
+                        Canonical subfactorial exemplar, bounded and streamed for interactivity.
                       </p>
                     </div>
                   </div>
@@ -2254,7 +2186,7 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startAckermann} disabled={!audioCtx}>
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("ackermann")} disabled={!audioCtx}>
                         Ackermann Function
                       </button>
                       <p className="mt-2 dos-description">
@@ -2275,11 +2207,11 @@ const startAckermann = () => {
                   </div>
                   <div className="row">
                     <div className="col-md-6">
-                      <button className="btn dos-btn" onClick={startDoubleExponential} disabled={!audioCtx}>
-                        Double Exponential Growth
+                      <button className="btn dos-btn" onClick={() => startAlgorithmById("booleanFunctionEnumeration")} disabled={!audioCtx}>
+                        Boolean Function Enumeration
                       </button>
                       <p className="mt-2 dos-description">
-                        Problems with extremely rapid growth rate.
+                        Enumerate all Boolean functions on n variables via truth tables of length 2^n. Input bounded to n {"<="} 3 for interactive visualization.
                       </p>
                     </div>
                   </div>
@@ -2443,45 +2375,60 @@ const startAckermann = () => {
         <div className="col-12">
           <div className="dos-panel">
             <h3>Visualizers <span className="blink">_</span></h3>
-            <div className="d-flex flex-wrap justify-content-around position-relative">
-              {}              <div className="dos-canvas-container audio-container">
-                <h4>Audio Frequencies</h4>
-                <canvas
-                  ref={audioCanvasRef}
-                  width="100%"
-                  height="100%"
-                  className="dos-canvas audio-canvas"
-                  id="audioVisualization"
-                  data-always-visible="true"
-                  style={{ maxWidth: "100%", height: "auto" }}
-                />
-              </div>              {}
-              <div className="dos-canvas-container">
-                <h4>Algorithm Steps</h4>
-                <canvas
-                  ref={algorithmCanvasRef}
-                  width="100%"
-                  height="100%"
-                  className="dos-canvas algorithm-canvas terminal-like-display"
-                  style={{
-                    fontFamily: "'VT323', 'DOS', monospace",
-                    border: "2px solid #888",
-                    boxShadow: "inset 0 0 10px rgba(0,0,0,0.5)",
-                    maxWidth: "100%",
-                    height: "auto"
-                  }}
-                />
+            <div className="visualizer-grid">
+              <div className="visualizer-cell visualizer-cell-frequency visualizer-cell-top">
+                <div className="dos-canvas-container visualizer-panel audio-container visualizer-panel-frequency">
+                  <h4>Hz</h4>
+                  <div className="visualizer-canvas-shell">
+                    <canvas
+                      ref={audioCanvasRef}
+                      className="dos-canvas visualizer-canvas audio-canvas"
+                      id="audioVisualization"
+                      data-always-visible="true"
+                      style={{ maxWidth: "100%" }}
+                    />
+                  </div>
+                </div>
               </div>
-
-              {}              <div className="dos-canvas-container">
-                <h4>Drum Pattern</h4>
-                <canvas
-                  ref={drumCanvasRef}
-                  width="100%"
-                  height="100%"
-                  className="dos-canvas drum-canvas"
-                  style={{ maxWidth: "100%", height: "auto" }}
-                />
+              <div className="visualizer-cell visualizer-cell-top">
+                <div className="dos-canvas-container visualizer-panel">
+                  <h4>Algorithm Pseudocode</h4>
+                  <div
+                    ref={pseudocodePanelRef}
+                    className="visualizer-text-panel visualizer-text-panel-large terminal-like-display"
+                  />
+                </div>
+              </div>
+              <div className="visualizer-cell visualizer-cell-top">
+                <div className="dos-canvas-container visualizer-panel">
+                  <h4>Implementation Source</h4>
+                  <pre className="visualizer-text-panel terminal-like-display mb-2">
+                    {verificationPanelText}
+                  </pre>
+                  <div
+                    ref={sourcePanelRef}
+                    className="visualizer-text-panel visualizer-text-panel-large terminal-like-display"
+                  />
+                </div>
+              </div>
+              <div className="visualizer-cell visualizer-cell-trace visualizer-cell-top">
+                <div className="dos-canvas-container visualizer-panel">
+                  <h4>Execution Trace</h4>
+                  <div
+                    ref={algorithmPanelRef}
+                    className="visualizer-text-panel visualizer-text-panel-large terminal-like-display"
+                  />
+                </div>
+              </div>
+              <div className="visualizer-cell visualizer-cell-full">
+                <div className="dos-canvas-container visualizer-panel">
+                  <h4>Drum Pattern</h4>
+                  <canvas
+                    ref={drumCanvasRef}
+                    className="dos-canvas visualizer-canvas drum-canvas"
+                    style={{ maxWidth: "100%" }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -2490,3 +2437,9 @@ const startAckermann = () => {
     </div>
   );
 }
+
+
+
+
+
+

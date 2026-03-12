@@ -1,139 +1,218 @@
-// algorithms.js
-import { SCALES } from "../scales.js";
-
-
 /**
- * 1) Binary Search Data
+ * Canonical O(log n) exemplars.
  */
-export function getBinarySearchData(scale, target) {
+function buildMaxHeap(values) {
+    const heap = [...values];
+
+    const siftDown = (index, size) => {
+        let current = index;
+
+        for (;;) {
+            const left = 2 * current + 1;
+            const right = 2 * current + 2;
+            let largest = current;
+
+            if (left < size && heap[left] > heap[largest]) {
+                largest = left;
+            }
+
+            if (right < size && heap[right] > heap[largest]) {
+                largest = right;
+            }
+
+            if (largest === current) break;
+
+            [heap[current], heap[largest]] = [heap[largest], heap[current]];
+            current = largest;
+        }
+    };
+
+    for (let index = Math.floor(heap.length / 2) - 1; index >= 0; index--) {
+        siftDown(index, heap.length);
+    }
+
+    return heap;
+}
+
+function createHeapDemo(scale) {
+    const usableValues = [...scale];
+
+    if (usableValues.length === 0) {
+        return { heap: [], insertValue: null };
+    }
+
+    if (usableValues.length === 1) {
+        return { heap: [usableValues[0]], insertValue: usableValues[0] };
+    }
+
+    return {
+        heap: buildMaxHeap(usableValues.slice(0, usableValues.length - 1)),
+        insertValue: usableValues[usableValues.length - 1],
+    };
+}
+
+export function getBinarySearchData(scale, target, sortOrder = "ascending") {
     let notes = [];
     let steps = [];
+    const sortedScale = [...scale].sort((a, b) =>
+      sortOrder === "descending" ? b - a : a - b
+    );
+    const actualTarget =
+      target ?? (sortedScale.length > 0 ? sortedScale[Math.floor(sortedScale.length / 2)] : undefined);
     
     let left = 0;
-    let right = scale.length - 1;
-    let foundIndex = -1; // We'll store the found index here (if any)
+    let right = sortedScale.length - 1;
+    let foundIndex = -1;
   
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
-  
-      // For demonstration, we record each step and the value checked
       steps.push(`BinarySearch: left=${left}, right=${right}, mid=${mid}`);
-      notes.push(scale[mid]);
+      notes.push(sortedScale[mid]);
   
-      if (scale[mid] === target) {
-        // We found the target
+      if (sortedScale[mid] === actualTarget) {
         foundIndex = mid;
         break;
-      } else if (scale[mid] < target) {
-        // Target is in the upper half
+      } else if (
+        (sortOrder === "descending" && sortedScale[mid] > actualTarget) ||
+        (sortOrder !== "descending" && sortedScale[mid] < actualTarget)
+      ) {
         left = mid + 1;
       } else {
-        // Target is in the lower half
         right = mid - 1;
       }
     }
   
     return { notes, steps, foundIndex };
-  }
+}
   
-  /**
-   * 2) Exponentiation by Squaring (O(log n))
-   *    Computes large powers of a number efficiently using indices of the scale array.
-   */
-  export function getExponentiationBySquaringData(scale, exponent) {
+export function getExponentiationBySquaringData(scale, exponent) {
     let notes = [];
     let steps = [];
-  
-    if (!scale) {
-      throw new Error(`Scale not found`);
-    }
   
     function exponentiationBySquaring(index, n) {
       if (n === 0) {
         steps.push(`Base case: scale[${index}]^0 = 1`);
         return 1;
       }
-      if (n < 0) {
-        steps.push(`Negative exponent: scale[${index}]^${n} = 1 / scale[${index}]^${-n}`);
-        return 1 / exponentiationBySquaring(index, -n);
-      }
       if (n % 2 === 0) {
         steps.push(`Even exponent: scale[${index}]^${n} = (scale[${index}]^${n / 2})^2`);
         const halfPower = exponentiationBySquaring(index, n / 2);
         notes.push(scale[index]);
-        steps.push(`Intermediate result: (scale[${index}]^${n / 2})^2 = ${halfPower * halfPower}`);
-        notes.push(halfPower * halfPower);
         return halfPower * halfPower;
-      } else {
-        steps.push(`Odd exponent: scale[${index}]^${n} = scale[${index}] * scale[${index}]^${n - 1}`);
-        const reducedPower = exponentiationBySquaring(index, n - 1);
-        notes.push(scale[index]);
-        steps.push(`Intermediate result: scale[${index}] * scale[${index}]^${n - 1} = ${scale[index] * reducedPower}`);
-        notes.push(scale[index] * reducedPower);
-        return scale[index] * reducedPower;
       }
+
+      steps.push(`Odd exponent: scale[${index}]^${n} = scale[${index}] * scale[${index}]^${n - 1}`);
+      const reducedPower = exponentiationBySquaring(index, n - 1);
+      notes.push(scale[index]);
+      return scale[index] * reducedPower;
     }
   
     const index = Math.floor(Math.random() * scale.length);
-    const result = exponentiationBySquaring(index, exponent);
+    const result = exponentiationBySquaring(index, Math.max(1, exponent));
     steps.push(`Result: scale[${index}]^${exponent} = ${result}`);
-    notes.push(result);
-  
+    notes.push(scale[index]);
     return { notes, steps };
-  }
+}
 
-  
-  /**
-   * 3) Logarithmic Division Data
-   */
-  export function getLogDivData(scale) {
+export function getEuclideanAlgorithmData(scale) {
     let notes = [];
     let steps = [];
-    const baseDuration = 600;
-    let current = baseDuration;
-    let scaleIndex = 0;
-  
-    while (current >= 50) {
-      steps.push(`Log Div: duration=${current}, nextNoteIndex=${scaleIndex}`);
-      notes.push(scale[scaleIndex]);
-      scaleIndex = (scaleIndex + 1) % scale.length;
-      current = Math.floor(current / 2);
-    }
-  
-    return { notes, steps };
-  }
-  
-  /**
-   * 4) Iterative Log Data
-   */
-  export function getIterativeLogData(scale) {
-    let notes = [];
-    let steps = [];
-    const numIterations = 8;
-  
-    for (let i = 1; i <= numIterations; i++) {
-      const note = scale[i % scale.length];
-      steps.push(`IterativeLog: iteration #${i} => freq ${note.toFixed(2)}`);
-      notes.push(note);
-    }
-    return { notes, steps };
-  }
-  
-  /**
-   * 5) Extra Pattern Data
-   */
-  export function getExtraLogData(scale) {
-    let notes = [];
-    let steps = [];
-  
-    for (let i = 0; i < 5; i++) {
-      const randIdx = Math.floor(Math.random() * scale.length);
-      const freq = scale[randIdx];
-      steps.push(`Extra: randomPick #${i + 1} => freq ${freq.toFixed(2)}`);
-      notes.push(freq);
-    }
-    return { notes, steps };
-  }
-  
 
+    if (scale.length < 2) {
+      steps.push("EuclideanGCD: Need at least 2 values.");
+      return { notes, steps };
+    }
+
+    let a = Math.round(scale[0]);
+    let b = Math.round(scale[1]);
+
+    while (b !== 0) {
+      steps.push(`EuclideanGCD: a=${a}, b=${b}`);
+      notes.push(scale[Math.abs(a) % scale.length], scale[Math.abs(b) % scale.length]);
+      const temp = b;
+      b = a % b;
+      a = temp;
+    }
+
+    steps.push(`EuclideanGCD: gcd=${Math.abs(a)}`);
+    return { notes, steps };
+}
   
+export function getBinaryHeapInsertData(scale) {
+    let notes = [];
+    let steps = [];
+
+    if (scale.length === 0) {
+      steps.push("HeapInsert: Scale is empty.");
+      return { notes, steps };
+    }
+
+    const { heap, insertValue: value } = createHeapDemo(scale);
+    steps.push(`HeapInsert: initialMaxHeap=[${heap.map((entry) => entry.toFixed(2)).join(", ")}]`);
+
+    heap.push(value);
+    steps.push(`HeapInsert: append value=${value.toFixed(2)} at index=${heap.length - 1}`);
+    notes.push(value);
+    let index = heap.length - 1;
+
+    while (index > 0) {
+      const parent = Math.floor((index - 1) / 2);
+      steps.push(
+        `HeapInsert: compare parent=${parent} (${heap[parent].toFixed(2)}) with child=${index} (${heap[index].toFixed(2)})`
+      );
+      notes.push(heap[index], heap[parent]);
+
+      if (heap[parent] >= heap[index]) {
+        steps.push(`HeapInsert: settled at index=${index}`);
+        break;
+      }
+
+      steps.push(
+        `HeapInsert: swap parent=${parent} (${heap[parent].toFixed(2)}) with child=${index} (${heap[index].toFixed(2)})`
+      );
+      [heap[parent], heap[index]] = [heap[index], heap[parent]];
+      index = parent;
+    }
+
+    if (index === 0) {
+      steps.push("HeapInsert: settled at root");
+    }
+
+    return { notes, steps };
+}
+  
+export function getHeapRootPathData(scale) {
+    let notes = [];
+    let steps = [];
+
+    const { heap, insertValue } = createHeapDemo(scale);
+    if (heap.length === 0) {
+      steps.push("HeapPath: Scale is empty.");
+      return { notes, steps };
+    }
+
+    if (insertValue != null) {
+      heap.push(insertValue);
+      let bubbleIndex = heap.length - 1;
+      while (bubbleIndex > 0) {
+        const parent = Math.floor((bubbleIndex - 1) / 2);
+        if (heap[parent] >= heap[bubbleIndex]) break;
+        [heap[parent], heap[bubbleIndex]] = [heap[bubbleIndex], heap[parent]];
+        bubbleIndex = parent;
+      }
+    }
+
+    let index = heap.length - 1;
+    steps.push(`HeapPath: heap=[${heap.map((entry) => entry.toFixed(2)).join(", ")}]`);
+
+    while (index > 0) {
+      const parent = Math.floor((index - 1) / 2);
+      steps.push(`HeapPath: visit index=${index}, value=${heap[index].toFixed(2)}`);
+      notes.push(heap[index]);
+      index = parent;
+    }
+
+    steps.push(`HeapPath: visit index=0, value=${heap[0].toFixed(2)}`);
+    notes.push(heap[0]);
+    return { notes, steps };
+}
