@@ -4,6 +4,7 @@ import AnimatedAsciiArt from "./AnimatedAsciiArt";
 import CombinedOverlay from "./CombinedOverlay";
 import bgImage from "./bg.png";
 import "./globalStyles.css";
+import { createAudioSetup, getViewportFlags } from "./appSupport";
 import {
   footerAsciiArt1,
   footerAsciiArt2,
@@ -16,29 +17,27 @@ import {
 function App() {
   const [audioCtx, setAudioCtx] = useState(null);
   const [analyser, setAnalyser] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 666);
-  const [isSmallMobile, setIsSmallMobile] = useState(window.innerWidth < 415);
+  const initialViewport = getViewportFlags();
+  const [isMobile, setIsMobile] = useState(initialViewport.isMobile);
+  const [isSmallMobile, setIsSmallMobile] = useState(initialViewport.isSmallMobile);
   const resizeTimeoutRef = useRef(null);
 
   useEffect(() => {
-    // Lazy initialize AudioContext only once when needed
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // Optimize FFT size for better performance - 1024 is often enough and improves performance
-    const analyserNode = ctx.createAnalyser();
-    analyserNode.fftSize = 1024; // Changed from 2048 to 1024 for better performance
-    analyserNode.smoothingTimeConstant = 0.8; // Add smoothing for nicer visualization
-    analyserNode.connect(ctx.destination);
-    
-    setAudioCtx(ctx);
-    setAnalyser(analyserNode);
+    const AudioContextClass =
+      typeof window !== "undefined"
+        ? window.AudioContext || window.webkitAudioContext
+        : null;
+    const { audioCtx: nextAudioCtx, analyser: nextAnalyser } = createAudioSetup(AudioContextClass);
+
+    setAudioCtx(nextAudioCtx);
+    setAnalyser(nextAnalyser);
 
     // Apply the DOS theme to body
     document.body.setAttribute("data-bs-theme", "dos");
 
     return () => {
-      if (ctx && ctx.state !== "closed") {
-        ctx.close();
+      if (nextAudioCtx && nextAudioCtx.state !== "closed") {
+        nextAudioCtx.close();
       }
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current);
@@ -53,8 +52,9 @@ function App() {
     }
     
     resizeTimeoutRef.current = setTimeout(() => {
-      setIsMobile(window.innerWidth < 666);
-      setIsSmallMobile(window.innerWidth < 415);
+      const viewport = getViewportFlags();
+      setIsMobile(viewport.isMobile);
+      setIsSmallMobile(viewport.isSmallMobile);
     }, 200); // 200ms debounce
   }, []);
 
