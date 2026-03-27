@@ -2,6 +2,10 @@ import {
   ALGORITHM_CATALOG,
 } from "./catalog.js";
 import {
+  validateAlgorithmDataShape,
+  validateAlgorithmEntryShape,
+} from "./contracts.js";
+import {
   getAccessElementData,
   getCheckEvenOddData,
   getFirstElementData,
@@ -64,15 +68,24 @@ const defineAlgorithm = ({
   verificationStatus,
   verificationNote,
   run,
-}) => ({
-  id: meta.id,
-  meta,
-  implementationName,
-  implementationFile,
-  verificationStatus,
-  verificationNote,
-  run,
-});
+}) => {
+  const entry = {
+    id: meta.id,
+    meta,
+    implementationName,
+    implementationFile,
+    verificationStatus,
+    verificationNote,
+    run: (context, options) => {
+      const result = run(context, options);
+      validateAlgorithmDataShape(result, meta.id);
+      return result;
+    },
+  };
+
+  validateAlgorithmEntryShape(entry);
+  return entry;
+};
 
 export const ALGORITHM_REGISTRY = {
   accessElement: defineAlgorithm({
@@ -392,9 +405,20 @@ export function describeAlgorithmEntry(entry) {
     ];
   }
 
+  const boundsDescription = entry.meta.rigor.bounds
+    ? JSON.stringify(entry.meta.rigor.bounds)
+    : "none";
+
   return [
     `algorithmId: ${entry.id}`,
     `label: ${entry.meta.buttonLabel}`,
+    `setup: ${entry.meta.setupName}`,
+    `growthClass: ${entry.meta.rigor.growthClass}`,
+    `claimType: ${entry.meta.rigor.claimType}`,
+    `boundedDemo: ${entry.meta.rigor.bounded ? "yes" : "no"}`,
+    `bounds: ${boundsDescription}`,
+    `noteStrategy: ${entry.meta.representation.noteStrategy}`,
+    `traceStrategy: ${entry.meta.representation.traceStrategy}`,
     `implementation: ${entry.implementationName}`,
     `implementationFile: ${entry.implementationFile}`,
     `verificationStatus: ${entry.verificationStatus}`,

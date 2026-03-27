@@ -5,9 +5,44 @@ import useQwertyInput, { keyToNote } from './hooks/useQwertyInput';
 import ThreeCanvas from './three/ThreeCanvas';
 import midiDebugger from './utils/midiDebugger';
 
+const StatusHud = ({ audioState, midiStatus, activeNotes }) => {
+  const recentMidiActivity = midiStatus.lastMessageAt && (Date.now() - midiStatus.lastMessageAt < 2000);
+  const midiLine = !midiStatus.supported
+    ? 'MIDI unsupported'
+    : midiStatus.access === 'error'
+      ? 'MIDI error'
+      : midiStatus.inputNames.length > 0
+        ? `MIDI inputs: ${midiStatus.inputNames.join(', ')}${recentMidiActivity ? ' (active)' : ''}`
+        : 'MIDI inputs: none detected';
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 16,
+      left: 16,
+      zIndex: 20,
+      padding: '10px 12px',
+      borderRadius: 10,
+      background: 'rgba(0, 0, 0, 0.72)',
+      color: '#e8f7ff',
+      fontFamily: 'monospace',
+      fontSize: 12,
+      lineHeight: 1.5,
+      pointerEvents: 'none',
+      maxWidth: 360
+    }}>
+      <div>{`Audio: ${audioState}`}</div>
+      <div>{midiLine}</div>
+      <div>{`Held notes: ${activeNotes.size}`}</div>
+      <div>Keyboard: A/W/S/E...K</div>
+    </div>
+  );
+};
+
 const SynthController = () => {
   const synth = useSynth();
   const [activeNotes, setActiveNotes] = useState(new Set());
+  const [audioState, setAudioState] = useState('unavailable');
   const midiActivityRef = useRef({ count: 0, lastTime: Date.now() });
   const handleNoteOn = useCallback((note, velocity) => {
     try {
@@ -78,8 +113,30 @@ const SynthController = () => {
     } catch (e) {
       console.error("Error in clearAllNotes:", e);
     }
-  }, [synth]);  const { clearAllNotes: midiPanic } = useMIDI(handleNoteOn, handleNoteOff);
+  }, [synth]);
+
+  const { clearAllNotes: midiPanic, midiStatus } = useMIDI(handleNoteOn, handleNoteOff);
   useQwertyInput(handleNoteOn, handleNoteOff);
+
+  useEffect(() => {
+    if (!synth?.audioContext) {
+      setAudioState('unavailable');
+      return undefined;
+    }
+
+    const { audioContext } = synth;
+    const syncAudioState = () => {
+      setAudioState(audioContext.state);
+    };
+
+    syncAudioState();
+    audioContext.addEventListener('statechange', syncAudioState);
+
+    return () => {
+      audioContext.removeEventListener('statechange', syncAudioState);
+    };
+  }, [synth]);
+
   useEffect(() => {
     const resumeAudioContext = async () => {
       if (!synth) {
@@ -182,14 +239,21 @@ const SynthController = () => {
       window.removeEventListener('blur', handleBlur);
       clearInterval(safetyInterval);
     };
-  }, [synth, activeNotes, clearAllNotes, midiPanic]);
+  }, [synth, activeNotes, clearAllNotes, midiPanic, handleNoteOn]);
 
   return (
-    <ThreeCanvas
-      onNoteOn={handleNoteOn}
-      onNoteOff={handleNoteOff}
-      activeNotes={activeNotes}
-    />
+    <>
+      <ThreeCanvas
+        onNoteOn={handleNoteOn}
+        onNoteOff={handleNoteOff}
+        activeNotes={activeNotes}
+      />
+      <StatusHud
+        audioState={audioState}
+        midiStatus={midiStatus}
+        activeNotes={activeNotes}
+      />
+    </>
   );
 };
 

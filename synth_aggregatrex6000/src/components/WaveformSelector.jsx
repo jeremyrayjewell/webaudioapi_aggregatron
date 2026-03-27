@@ -62,7 +62,6 @@ const WaveformSelector = ({
         color="white"
         anchorX="center"
         anchorY="middle"
-        font="/textures/fonts/bold.ttf"
       >
         {getWaveformDisplay(value)}
       </Text>

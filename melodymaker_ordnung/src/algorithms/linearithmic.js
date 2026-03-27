@@ -72,11 +72,21 @@ export function getHeapSortData(scale, sortOrder = "ascending") {
         let right = 2 * i + 2;
 
         if (left < n && shouldPromote(arr[left], arr[selected])) {
+            steps.push(`Compare: ${arr[left].toFixed(2)} with ${arr[selected].toFixed(2)}`);
+            notes.push(arr[left], arr[selected]);
             selected = left;
+        } else if (left < n) {
+            steps.push(`Compare: ${arr[left].toFixed(2)} with ${arr[selected].toFixed(2)}`);
+            notes.push(arr[left], arr[selected]);
         }
 
         if (right < n && shouldPromote(arr[right], arr[selected])) {
+            steps.push(`Compare: ${arr[right].toFixed(2)} with ${arr[selected].toFixed(2)}`);
+            notes.push(arr[right], arr[selected]);
             selected = right;
+        } else if (right < n) {
+            steps.push(`Compare: ${arr[right].toFixed(2)} with ${arr[selected].toFixed(2)}`);
+            notes.push(arr[right], arr[selected]);
         }
 
         if (selected !== i) {
@@ -90,11 +100,14 @@ export function getHeapSortData(scale, sortOrder = "ascending") {
     function heapSort(arr) {
         let n = arr.length;
 
+        steps.push(`BuildHeap: size=${n}`);
         for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
             heapify(arr, n, i);
         }
 
         for (let i = n - 1; i > 0; i--) {
+            steps.push(`ExtractRoot: ${arr[0].toFixed(2)} to index ${i}`);
+            notes.push(arr[0]);
             steps.push(`Swap: ${arr[0].toFixed(2)} with ${arr[i].toFixed(2)}`);
             notes.push(arr[0], arr[i]);
             [arr[0], arr[i]] = [arr[i], arr[0]];
@@ -124,8 +137,12 @@ export function getQuickSortData(scale, sortOrder = "ascending") {
     function partition(arr, low, high) {
         let pivot = arr[high];
         let i = low - 1;
+        steps.push(`Pivot: ${pivot.toFixed(2)} at index ${high}`);
+        notes.push(pivot);
 
         for (let j = low; j < high; j++) {
+            steps.push(`Compare: ${arr[j].toFixed(2)} with pivot ${pivot.toFixed(2)}`);
+            notes.push(arr[j], pivot);
             if (shouldMoveLeft(arr[j], pivot)) {
                 i++;
                 steps.push(`Swap: ${arr[i].toFixed(2)} with ${arr[j].toFixed(2)}`);
@@ -136,6 +153,7 @@ export function getQuickSortData(scale, sortOrder = "ascending") {
         steps.push(`Swap: ${arr[i + 1].toFixed(2)} with ${arr[high].toFixed(2)}`);
         notes.push(arr[i + 1], arr[high]);
         [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+        steps.push(`Partitioned: pivot index ${i + 1}`);
         return i + 1;
     }
 

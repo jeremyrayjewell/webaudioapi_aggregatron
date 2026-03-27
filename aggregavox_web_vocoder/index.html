@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AggregaVox Web Vocoder</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="screen-bg" aria-hidden="true"></div>
+  <div class="screen-bloom" aria-hidden="true"></div>
+  <main class="app-shell">
+    <section class="hero">
+      <div class="hero-meta">
+        <div class="hero-left">
+          <p class="eyebrow">Aggregatron Voice Systems Division</p>
+          <div class="hero-title-module">
+            <div class="hero-title-stack">
+              <img class="hero-title-image" src="./title.png" alt="AggregaVox">
+              <p class="lede">Realtime Vocoder Terminal.</p>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <button id="startButton" class="primary">Start Audio</button>
+            <button id="stopButton" class="secondary" disabled>Stop Audio</button>
+            <button id="headsetModeButton" class="secondary" type="button" aria-pressed="true">Headset Mode</button>
+            <div class="status-led-wrap" aria-label="Audio processing status">
+              <span id="statusLed" class="status-led status-led-off"></span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-module-cluster">
+          <div class="hero-module hero-scope-module">
+            <div class="hero-meta-right">
+              <canvas id="spectrometerCanvas" class="hero-scope-canvas" width="118" height="118" aria-label="Audio spectrometer display"></canvas>
+            </div>
+          </div>
+          <div class="hero-module">
+            <div class="hero-meta-right">
+              <img class="hero-logo" src="./logo.png" alt="AggregaVox logo">
+              <p class="hero-stamp">Node AVX-72</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="hero-japanese">音声分析、キャリア合成、および音階制約付き伝送</p>
+    </section>
+
+    <section class="panel-grid">
+      <article class="panel">
+        <div class="panel-heading">
+          <div class="panel-kicker">Ⓐ</div>
+          <h2>Carrier Array</h2>
+        </div>
+        <label>
+          <span class="label-row"><span>Fundamental</span><span id="fundamentalValue" class="value-display">110</span></span>
+          <input id="fundamental" type="range" min="60" max="220" value="110" step="1">
+        </label>
+        <div class="compact-grid">
+          <label>
+            Quantize Carrier
+            <select id="quantizeEnabled">
+              <option value="on" selected>On</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>
+            Root Note
+            <select id="rootNote">
+              <option value="C">C</option>
+              <option value="C#">C#</option>
+              <option value="D">D</option>
+              <option value="D#">D#</option>
+              <option value="E">E</option>
+              <option value="F">F</option>
+              <option value="F#">F#</option>
+              <option value="G">G</option>
+              <option value="G#">G#</option>
+              <option value="A" selected>A</option>
+              <option value="A#">A#</option>
+              <option value="B">B</option>
+            </select>
+          </label>
+          <label>
+            Scale
+            <select id="scaleType">
+              <option value="chromatic">Chromatic</option>
+              <option value="major">Major</option>
+              <option value="minor">Minor</option>
+              <option value="minorPentatonic" selected>Min Pent</option>
+              <option value="majorPentatonic">Maj Pent</option>
+            </select>
+          </label>
+          <label>
+            Waveform
+            <select id="waveform">
+              <option value="sawtooth">Sawtooth</option>
+              <option value="square">Square</option>
+              <option value="triangle">Triangle</option>
+              <option value="sine">Sine</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          <span class="label-row"><span>Harmonics</span><span id="harmonicsValue" class="value-display">10</span></span>
+          <input id="harmonics" type="range" min="4" max="24" value="10" step="1">
+        </label>
+        <label>
+          <span class="label-row"><span>Brightness</span><span id="brightnessValue" class="value-display">0.42</span></span>
+          <input id="brightness" type="range" min="0.15" max="1" value="0.42" step="0.01">
+        </label>
+        <label>
+          <span class="label-row"><span>Carrier Monitor</span><span id="carrierMonitorValue" class="value-display">0.00</span></span>
+          <input id="carrierMonitor" type="range" min="0" max="0.35" value="0.00" step="0.01">
+        </label>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div class="panel-kicker">Ⓑ</div>
+          <h2>Analysis Matrix</h2>
+        </div>
+        <label>
+          <span class="label-row"><span>Bands</span><span id="bandsValue" class="value-display">18</span></span>
+          <input id="bands" type="range" min="8" max="24" value="18" step="1">
+        </label>
+        <label>
+          <span class="label-row"><span>Dry / Wet</span><span id="mixValue" class="value-display">62</span></span>
+          <input id="mix" type="range" min="0" max="1" value="0.62" step="0.01">
+        </label>
+        <label>
+          <span class="label-row"><span>Attack</span><span id="attackValue" class="value-display">8</span></span>
+          <input id="attack" type="range" min="0.003" max="0.08" value="0.008" step="0.001">
+        </label>
+        <label>
+          <span class="label-row"><span>Release</span><span id="releaseValue" class="value-display">110</span></span>
+          <input id="release" type="range" min="0.03" max="0.45" value="0.11" step="0.01">
+        </label>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div class="panel-kicker">Ⓒ</div>
+          <h2>Speech Input</h2>
+        </div>
+        <label>
+          <span class="label-row"><span>Input Gain</span><span id="inputGainValue" class="value-display">1.45</span></span>
+          <input id="inputGain" type="range" min="0.4" max="3" value="1.45" step="0.05">
+        </label>
+        <label>
+          <span class="label-row"><span>Noise Gate</span><span id="gateValue" class="value-display">0.006</span></span>
+          <input id="gate" type="range" min="0.000" max="0.05" value="0.006" step="0.001">
+        </label>
+        <label>
+          <span class="label-row"><span>Noise Lift</span><span id="noiseValue" class="value-display">0.00</span></span>
+          <input id="noise" type="range" min="0" max="0.6" value="0.00" step="0.01">
+        </label>
+        <label>
+          <span class="label-row"><span>Output Gain</span><span id="outputGainValue" class="value-display">0.98</span></span>
+          <input id="outputGain" type="range" min="0.1" max="1.4" value="0.98" step="0.01">
+        </label>
+        <div class="meter-wrap">
+          <div class="meter-label">
+            <span>Envelope activity</span>
+            <span id="meterValue" class="value-display">0</span>
+          </div>
+          <div class="meter">
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-segment"></span>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,22 +1,4 @@
-function* chunkEvents(eventIterator, chunkSize = 16) {
-    let notes = [];
-    let steps = [];
-
-    for (const event of eventIterator) {
-        if (event.step) steps.push(event.step);
-        if ("note" in event) notes.push(event.note);
-
-        if (notes.length >= chunkSize || steps.length >= chunkSize) {
-            yield { notes, steps };
-            notes = [];
-            steps = [];
-        }
-    }
-
-    if (notes.length > 0 || steps.length > 0) {
-        yield { notes, steps };
-    }
-}
+import { chunkEvents } from "./streaming.js";
 
 function* derangementEvents(scale, maxPermutations = 300) {
     const maxElements = 6;

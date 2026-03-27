@@ -1,6 +1,81 @@
 const sortAware = (sortOrder, ascendingLines, descendingLines) =>
   sortOrder === "descending" ? descendingLines : ascendingLines;
 
+const RIGOR_BY_TAB = {
+  constant: { claimType: "canonical", growthClass: "O(1)" },
+  doublelogarithmic: { claimType: "average_case", growthClass: "O(log log n)" },
+  logarithmic: { claimType: "canonical", growthClass: "O(log n)" },
+  polylogarithmic: { claimType: "canonical", growthClass: "O((log n)^2)" },
+  sublinear: { claimType: "canonical", growthClass: "O(sqrt(n))" },
+  linear: { claimType: "canonical", growthClass: "O(n)" },
+  linearithmic: { claimType: "canonical", growthClass: "O(n log n)" },
+  quadratic: { claimType: "canonical", growthClass: "O(n^2)" },
+  cubic: { claimType: "canonical", growthClass: "O(n^3)" },
+  polynomial: { claimType: "canonical", growthClass: "O(n^k)" },
+  exponential: { claimType: "canonical", growthClass: "O(2^n)" },
+  exponentialBaseC: { claimType: "canonical", growthClass: "O(c^n)" },
+  factorial: { claimType: "canonical", growthClass: "O(n!)" },
+  subfactorial: { claimType: "canonical", growthClass: "O(n!/k^n)" },
+  ackermann: { claimType: "canonical", growthClass: "O(A(n,n))" },
+  doubleExponential: { claimType: "canonical", growthClass: "O(2^(2^n))" },
+};
+
+const ALGORITHM_RIGOR_OVERRIDES = {
+  travelingSalesman: {
+    claimType: "bounded_demo",
+    bounds: { maxInputLength: 6 },
+    representation: { noteStrategy: "streamed_notes", traceStrategy: "streamed_trace" },
+  },
+  derangement: {
+    claimType: "bounded_demo",
+    bounds: { maxInputLength: 6, maxEnumeratedOutputs: 300 },
+    representation: { noteStrategy: "streamed_notes", traceStrategy: "streamed_trace" },
+  },
+  ackermann: {
+    claimType: "bounded_demo",
+    bounds: { fixedParameters: { m: 2, n: 2 } },
+  },
+  booleanFunctionEnumeration: {
+    claimType: "bounded_demo",
+    bounds: { maxVariables: 3 },
+  },
+  threeWayPartition: {
+    claimType: "bounded_demo",
+    bounds: { maxInputLength: 5 },
+  },
+  interpolationSearch: {
+    claimType: "average_case",
+  },
+};
+
+function withRigorMetadata(catalog) {
+  return Object.fromEntries(
+    Object.entries(catalog).map(([algorithmId, meta]) => {
+      const tabRigor = RIGOR_BY_TAB[meta.tab] || {};
+      const override = ALGORITHM_RIGOR_OVERRIDES[algorithmId] || {};
+      const claimType = override.claimType || tabRigor.claimType || "canonical";
+
+      return [
+        algorithmId,
+        {
+          ...meta,
+          rigor: {
+            claimType,
+            growthClass: override.growthClass || tabRigor.growthClass || "unspecified",
+            bounded: claimType === "bounded_demo",
+            bounds: override.bounds || null,
+          },
+          representation: {
+            noteStrategy: "notes_with_optional_rests",
+            traceStrategy: "step_trace",
+            ...(override.representation || {}),
+          },
+        },
+      ];
+    })
+  );
+}
+
 export const COMPLEXITY_TABS = [
   { id: "constant", navLabel: "O(1)", title: "01. O(1) Constant" },
   { id: "doublelogarithmic", navLabel: "O(log log n)", title: "02. O(log log n) Double Logarithmic" },
@@ -20,7 +95,7 @@ export const COMPLEXITY_TABS = [
   { id: "doubleExponential", navLabel: "O(2^(2^n))", title: "16. O(2^(2^n)) Double Exponential" },
 ];
 
-export const ALGORITHM_CATALOG = {
+const BASE_ALGORITHM_CATALOG = {
   accessElement: {
     id: "accessElement",
     tab: "constant",
@@ -331,6 +406,8 @@ export const ALGORITHM_CATALOG = {
     highlightLine: (step) => (step.includes("truth table") ? 2 : 1),
   },
 };
+
+export const ALGORITHM_CATALOG = withRigorMetadata(BASE_ALGORITHM_CATALOG);
 
 export const ALGORITHMS_BY_TAB = COMPLEXITY_TABS.reduce((groups, tab) => {
   groups[tab.id] = Object.values(ALGORITHM_CATALOG).filter((algorithm) => algorithm.tab === tab.id);

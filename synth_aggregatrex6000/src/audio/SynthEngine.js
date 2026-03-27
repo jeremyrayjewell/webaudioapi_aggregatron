@@ -55,12 +55,13 @@ export default class SynthEngine {
       audioContextManager.setupUserActivationListeners();
       
       // Add our own state change listener
-      this.audioContext.addEventListener('statechange', () => {
+      this.audioContextStateHandler = () => {
         console.log(`Audio context state changed to: ${this.audioContext.state}`);
         if (this.audioContext.state === 'running') {
           this.isInitialized = true;
         }
-      });
+      };
+      this.audioContext.addEventListener('statechange', this.audioContextStateHandler);
       
       this.masterGain = this.audioContext.createGain();
       this.masterGain.gain.value = DEFAULT_MASTER_VOLUME;
@@ -319,6 +320,21 @@ export default class SynthEngine {
 
   setParam(param, value) {
     console.log('Setting synth param:', param, value);
+
+    // Support dotted effect params used by the React state layer, e.g. "delay.mix".
+    if (param.includes('.')) {
+      const [group, paramName] = param.split('.');
+
+      if (this.effectChain && group && paramName) {
+        if (paramName === 'enabled') {
+          this.effectChain.toggleEffect(group, value);
+          return;
+        }
+
+        this.effectChain.setEffectParam(group, paramName, value);
+        return;
+      }
+    }
     
     // Handle effect parameters
     if (param.startsWith('effect_')) {
@@ -458,6 +474,7 @@ export default class SynthEngine {
     if (this.masterGain) {
       this.masterGain.disconnect();
     }
+    audioContextManager.releaseContext(this.audioContext);
     if (this.audioContext && this.audioContext.state !== 'closed') {
       this.audioContext.close().catch(e => {
         console.error("Error closing audio context:", e);

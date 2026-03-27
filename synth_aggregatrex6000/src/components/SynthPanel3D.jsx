@@ -41,7 +41,6 @@ const PanicButton = ({ panic }) => {
         color="white"
         anchorX="center"
         anchorY="middle"
-        font="/textures/fonts/bold.ttf"
       >
         PANIC
       </Text>

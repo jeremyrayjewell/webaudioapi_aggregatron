@@ -81,6 +81,31 @@ function renderAlgorithmControl(control, props) {
   return null;
 }
 
+function formatClaimType(claimType) {
+  switch (claimType) {
+    case "bounded_demo":
+      return "bounded demo";
+    case "average_case":
+      return "average-case";
+    default:
+      return claimType;
+  }
+}
+
+function formatBounds(bounds) {
+  if (!bounds) {
+    return "none";
+  }
+
+  return Object.entries(bounds)
+    .map(([key, value]) =>
+      typeof value === "object" && value !== null
+        ? `${key}=${JSON.stringify(value)}`
+        : `${key}=${value}`
+    )
+    .join(", ");
+}
+
 export function BigOComplexitySection(props) {
   const {
     selectedTab,
@@ -157,6 +182,11 @@ export function BigOComplexitySection(props) {
                           </button>
                         )}
                         <p className="mt-2 dos-description">{algorithm.description}</p>
+                        <div className="dos-description mt-2">
+                          <div><strong>Claim:</strong> {algorithm.rigor.growthClass} ({formatClaimType(algorithm.rigor.claimType)})</div>
+                          <div><strong>Bounds:</strong> {formatBounds(algorithm.rigor.bounds)}</div>
+                          <div><strong>Representation:</strong> {algorithm.representation.noteStrategy} / {algorithm.representation.traceStrategy}</div>
+                        </div>
                         {renderAlgorithmControl(item.control, {
                           numNotes,
                           setNumNotes,

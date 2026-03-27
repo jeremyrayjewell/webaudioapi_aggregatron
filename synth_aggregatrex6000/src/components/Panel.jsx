@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect, Suspense, useMemo } from 'react';
 import { Text, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
+const publicUrl = process.env.PUBLIC_URL || '';
+const texturePath = (filename) => `${publicUrl}/textures/leather/${filename}`;
+
 const TexturedMaterial = React.memo(({ color, width, height, textures }) => {
   useEffect(() => {
     if (textures) {
@@ -48,9 +51,9 @@ const PanelContent = React.memo(({
   const meshRef = useRef();
 
   const textures = useTexture({
-    map: '/textures/leather/brown_leather_albedo_4k.jpg',
-    roughnessMap: '/textures/leather/brown_leather_rough_4k.jpg',
-    displacementMap: '/textures/leather/brown_leather_disp_4k.png'
+    map: texturePath('brown_leather_albedo_4k.jpg'),
+    roughnessMap: texturePath('brown_leather_rough_4k.jpg'),
+    displacementMap: texturePath('brown_leather_disp_4k.png')
   });
 
   const panelColor = useMemo(() => 

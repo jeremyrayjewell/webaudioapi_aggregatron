@@ -1,7 +1,13 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import midiDebugger from '../utils/midiDebugger';
 
 export function useMIDI(onNoteOn, onNoteOff) {
+  const [midiStatus, setMidiStatus] = useState({
+    supported: typeof navigator !== 'undefined' && typeof navigator.requestMIDIAccess === 'function',
+    access: 'idle',
+    inputNames: [],
+    lastMessageAt: null
+  });
   const activeNotesRef = useRef(new Set());
   const processingRef = useRef(false);
   const messageBatchTimerRef = useRef(null);
@@ -92,6 +98,11 @@ export function useMIDI(onNoteOn, onNoteOff) {
   const queueMIDIMessage = useCallback((message) => {
     const [status, note, velocity] = message.data;
     const command = status & 0xf0;
+
+    setMidiStatus((current) => ({
+      ...current,
+      lastMessageAt: Date.now()
+    }));
     
     // Immediate processing for note-off messages to prevent hanging notes
     if (command === 0x80 || (command === 0x90 && velocity === 0)) {
@@ -121,9 +132,33 @@ export function useMIDI(onNoteOn, onNoteOff) {
 
   useEffect(() => {
     let midiAccess = null;
+    const syncInputs = (access, accessState = 'granted') => {
+      const inputNames = access ? [...access.inputs.values()].map((input) => input.name || 'Unnamed device') : [];
+      setMidiStatus((current) => ({
+        ...current,
+        access: accessState,
+        inputNames
+      }));
+    };
+
     const initMIDI = async () => {
+      if (typeof navigator === 'undefined' || typeof navigator.requestMIDIAccess !== 'function') {
+        setMidiStatus((current) => ({
+          ...current,
+          supported: false,
+          access: 'unsupported',
+          inputNames: []
+        }));
+        return;
+      }
+
       try {
+        setMidiStatus((current) => ({
+          ...current,
+          access: 'requesting'
+        }));
         midiAccess = await navigator.requestMIDIAccess();
+        syncInputs(midiAccess);
         for (let input of midiAccess.inputs.values()) {
           console.log(`Connected MIDI input: ${input.name}`);
           input.onmidimessage = queueMIDIMessage;
@@ -137,10 +172,17 @@ export function useMIDI(onNoteOn, onNoteOff) {
           if (port.type === 'input') {
             console.log(`MIDI port ${port.name || 'Unnamed'} ${port.state}`);
             if (port.state === 'connected') port.onmidimessage = queueMIDIMessage;
+            if (port.state !== 'connected') port.onmidimessage = null;
+            syncInputs(midiAccess);
           }
         };
       } catch (e) {
         console.error('Failed to initialize MIDI access:', e);
+        setMidiStatus((current) => ({
+          ...current,
+          access: 'error',
+          inputNames: []
+        }));
       }
     };
 
@@ -200,5 +242,5 @@ export function useMIDI(onNoteOn, onNoteOff) {
     };
   }, [queueMIDIMessage, clearAllNotes, onNoteOff]);
 
-  return { clearAllNotes };
+  return { clearAllNotes, midiStatus };
 }

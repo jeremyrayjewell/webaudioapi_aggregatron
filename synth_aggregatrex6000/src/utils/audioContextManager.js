@@ -1,8 +1,26 @@
 let audioContext = null;
 let isContextReady = false;
+let activationListenersAttached = false;
+let activationHandler = null;
+
+const removeUserActivationListeners = () => {
+  if (!activationListenersAttached || !activationHandler) return;
+
+  ['mousedown', 'touchstart', 'keydown'].forEach((type) => {
+    window.removeEventListener(type, activationHandler);
+  });
+
+  activationListenersAttached = false;
+  activationHandler = null;
+};
 
 const createContext = async () => {
   try {
+    if (audioContext?.state === 'closed') {
+      audioContext = null;
+      isContextReady = false;
+    }
+
     if (!audioContext) {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       
@@ -21,6 +39,8 @@ const createContext = async () => {
 };
 
 const setupUserActivationListeners = () => {
+  if (activationListenersAttached) return;
+
   const activationEvents = ['mousedown', 'touchstart', 'keydown'];
 
   const initOnFirstInteraction = async (event) => {
@@ -33,15 +53,15 @@ const setupUserActivationListeners = () => {
       if (audioContext.state === 'running') {
         console.log('Audio context resumed successfully');
         isContextReady = true;
-        // Remove listeners since we don't need them anymore
-        activationEvents.forEach(type => {
-          window.removeEventListener(type, initOnFirstInteraction);
-        });
+        removeUserActivationListeners();
       }
     } catch (error) {
       console.error('Failed to resume audio context:', error);
     }
   };
+
+  activationHandler = initOnFirstInteraction;
+  activationListenersAttached = true;
 
   // Add listeners for user interaction events
   activationEvents.forEach(type => {
@@ -50,7 +70,7 @@ const setupUserActivationListeners = () => {
 };
 
 const resumeContext = async () => {
-  if (!audioContext) return false;
+  if (!audioContext || audioContext.state === 'closed') return false;
   
   try {
     if (audioContext.state === 'suspended') {
@@ -70,10 +90,23 @@ const isReady = () => isContextReady && audioContext?.state === 'running';
 
 const getContext = () => audioContext;
 
-export default {
+const releaseContext = (contextToRelease = null) => {
+  if (contextToRelease && audioContext && contextToRelease !== audioContext) {
+    return;
+  }
+
+  removeUserActivationListeners();
+  audioContext = null;
+  isContextReady = false;
+};
+
+const audioContextManager = {
   createContext,
   setupUserActivationListeners,
   resumeContext,
   isReady,
-  getContext
+  getContext,
+  releaseContext
 };
+
+export default audioContextManager;
