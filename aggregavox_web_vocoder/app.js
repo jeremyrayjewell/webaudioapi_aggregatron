@@ -3,6 +3,7 @@ const ui = {
   stopButton: document.getElementById("stopButton"),
   headsetModeButton: document.getElementById("headsetModeButton"),
   statusLed: document.getElementById("statusLed"),
+  currentNoteValue: document.getElementById("currentNoteValue"),
   spectrometerCanvas: document.getElementById("spectrometerCanvas"),
   meterValue: document.getElementById("meterValue"),
   fundamental: document.getElementById("fundamental"),
@@ -44,6 +45,13 @@ const SCALE_INTERVALS = {
   majorPentatonic: [0, 2, 4, 7, 9]
 };
 const SEVEN_SEGMENT_MAP = {
+  "A": ["a", "b", "c", "e", "f", "g"],
+  "B": ["c", "d", "e", "f", "g"],
+  "C": ["a", "d", "e", "f"],
+  "D": ["b", "c", "d", "e", "g"],
+  "E": ["a", "d", "e", "f", "g"],
+  "F": ["a", "e", "f", "g"],
+  "G": ["a", "c", "d", "e", "f"],
   "0": ["a", "b", "c", "d", "e", "f"],
   "1": ["b", "c"],
   "2": ["a", "b", "g", "e", "d"],
@@ -71,6 +79,16 @@ class AggregaVoxEngine {
     this.outputCompressor = null;
     this.spectrometerAnalyser = null;
     this.spectrometerData = null;
+    this.pitchAnalyser = null;
+    this.pitchBuffer = null;
+    this.sibilanceFilter = null;
+    this.sibilanceAnalyser = null;
+    this.sibilanceBuffer = null;
+    this.unvoicedNoiseFilter = null;
+    this.unvoicedGainNode = null;
+    this.unvoicedEnvelope = 0;
+    this.trackedFundamental = null;
+    this.lastQuantizedFundamental = null;
     this.outputGainNode = null;
     this.dryGainNode = null;
     this.wetGainNode = null;
@@ -88,6 +106,7 @@ class AggregaVoxEngine {
     this.drawSpectrometerIdle();
     this.setStatusLed("off");
     this.updateMeter(0);
+    this.updateCurrentNoteDisplay();
   }
 
   readParameters() {
@@ -135,14 +154,9 @@ class AggregaVoxEngine {
     };
   }
 
-  getQuantizedFundamental() {
-    const { fundamental, quantizeEnabled, rootNote, scaleType } = this.parameters;
-
-    if (!quantizeEnabled) {
-      return fundamental;
-    }
-
-    const midi = Math.round(69 + 12 * Math.log2(fundamental / 440));
+  quantizeFrequency(frequency) {
+    const { rootNote, scaleType } = this.parameters;
+    const midi = Math.round(69 + 12 * Math.log2(frequency / 440));
     const rootIndex = NOTE_NAMES.indexOf(rootNote);
     const allowedIntervals = SCALE_INTERVALS[scaleType] || SCALE_INTERVALS.chromatic;
     let bestMidi = midi;
@@ -162,6 +176,37 @@ class AggregaVoxEngine {
     }
 
     return 440 * Math.pow(2, (bestMidi - 69) / 12);
+  }
+
+  getQuantizedFundamental() {
+    const { quantizeEnabled } = this.parameters;
+    const sourceFundamental = this.trackedFundamental ?? this.lastQuantizedFundamental ?? this.parameters.fundamental;
+
+    if (!quantizeEnabled) {
+      return sourceFundamental;
+    }
+
+    const quantized = this.quantizeFrequency(sourceFundamental);
+    this.lastQuantizedFundamental = quantized;
+    return quantized;
+  }
+
+  getDisplayFrequency() {
+    return this.parameters.quantizeEnabled
+      ? this.getQuantizedFundamental()
+      : (this.trackedFundamental ?? this.parameters.fundamental);
+  }
+
+  getCurrentNoteLabel() {
+    const frequency = this.getDisplayFrequency();
+    if (!frequency || !Number.isFinite(frequency) || frequency <= 0) {
+      return "--";
+    }
+
+    const midi = Math.round(69 + 12 * Math.log2(frequency / 440));
+    const noteName = NOTE_NAMES[(midi + 1200) % 12];
+    const octave = Math.floor(midi / 12) - 1;
+    return `${noteName}${octave}`;
   }
 
   async start() {
@@ -184,6 +229,7 @@ class AggregaVoxEngine {
     this.startEnvelopeLoop();
     document.body.classList.remove("audio-off");
     document.body.classList.add("audio-on");
+    this.updateCurrentNoteDisplay();
   }
 
   buildGraph() {
@@ -196,8 +242,23 @@ class AggregaVoxEngine {
     this.inputGainNode = ctx.createGain();
     this.inputGainNode.gain.value = params.inputGain;
 
-    this.outputGainNode = ctx.createGain();
-    this.outputGainNode.gain.value = params.outputGain;
+      this.outputGainNode = ctx.createGain();
+      this.outputGainNode.gain.value = params.outputGain;
+
+      this.pitchAnalyser = ctx.createAnalyser();
+      this.pitchAnalyser.fftSize = 2048;
+      this.pitchAnalyser.smoothingTimeConstant = 0.2;
+      this.pitchBuffer = new Float32Array(this.pitchAnalyser.fftSize);
+
+      this.sibilanceFilter = ctx.createBiquadFilter();
+      this.sibilanceFilter.type = "highpass";
+      this.sibilanceFilter.frequency.value = this.parameters.headsetMode ? 2600 : 2200;
+      this.sibilanceFilter.Q.value = 0.707;
+
+      this.sibilanceAnalyser = ctx.createAnalyser();
+      this.sibilanceAnalyser.fftSize = 1024;
+      this.sibilanceAnalyser.smoothingTimeConstant = 0.12;
+      this.sibilanceBuffer = new Float32Array(this.sibilanceAnalyser.fftSize);
 
     this.spectrometerAnalyser = ctx.createAnalyser();
     this.spectrometerAnalyser.fftSize = 256;
@@ -232,18 +293,30 @@ class AggregaVoxEngine {
     this.carrierMonitorGainNode = ctx.createGain();
     this.carrierMonitorGainNode.gain.value = params.carrierMonitor;
 
-    this.noiseFilter = ctx.createBiquadFilter();
-    this.noiseFilter.type = "highpass";
-    this.noiseFilter.frequency.value = 3200;
-    this.noiseFilter.Q.value = 0.4;
+      this.noiseFilter = ctx.createBiquadFilter();
+      this.noiseFilter.type = "highpass";
+      this.noiseFilter.frequency.value = 3200;
+      this.noiseFilter.Q.value = 0.4;
 
-    this.noiseGainNode = ctx.createGain();
-    this.noiseGainNode.gain.value = params.noise;
+      this.unvoicedNoiseFilter = ctx.createBiquadFilter();
+      this.unvoicedNoiseFilter.type = "bandpass";
+      this.unvoicedNoiseFilter.frequency.value = this.parameters.headsetMode ? 4200 : 3600;
+      this.unvoicedNoiseFilter.Q.value = 0.8;
 
-    this.microphoneSource.connect(this.inputGainNode);
-    this.inputGainNode.connect(this.dryGainNode);
-    this.inputGainNode.connect(this.modulatorHighpass);
-    this.modulatorHighpass.connect(this.modulatorLowpass);
+      this.noiseGainNode = ctx.createGain();
+      this.noiseGainNode.gain.value = params.noise;
+
+      this.unvoicedGainNode = ctx.createGain();
+      this.unvoicedGainNode.gain.value = 0;
+      this.unvoicedEnvelope = 0;
+
+      this.microphoneSource.connect(this.inputGainNode);
+      this.inputGainNode.connect(this.dryGainNode);
+      this.inputGainNode.connect(this.modulatorHighpass);
+      this.inputGainNode.connect(this.sibilanceFilter);
+      this.modulatorHighpass.connect(this.modulatorLowpass);
+      this.sibilanceFilter.connect(this.sibilanceAnalyser);
+      this.modulatorLowpass.connect(this.pitchAnalyser);
     this.dryGainNode.connect(this.outputCompressor);
     this.wetGainNode.connect(this.outputCompressor);
     this.carrierMonitorGainNode.connect(this.outputCompressor);
@@ -252,10 +325,13 @@ class AggregaVoxEngine {
     this.outputGainNode.connect(ctx.destination);
     this.carrierBus.connect(this.carrierMonitorGainNode);
 
-    const noiseSource = this.createNoiseSource();
-    noiseSource.connect(this.noiseFilter);
-    this.noiseFilter.connect(this.noiseGainNode);
-    this.noiseGainNode.connect(this.carrierBus);
+      const noiseSource = this.createNoiseSource();
+      noiseSource.connect(this.noiseFilter);
+      this.noiseFilter.connect(this.noiseGainNode);
+      this.noiseFilter.connect(this.unvoicedNoiseFilter);
+      this.unvoicedNoiseFilter.connect(this.unvoicedGainNode);
+      this.unvoicedGainNode.connect(this.wetGainNode);
+      this.noiseGainNode.connect(this.carrierBus);
     noiseSource.start();
     this.noiseSource = noiseSource;
 
@@ -389,7 +465,10 @@ class AggregaVoxEngine {
       }
 
       const activity = this.bandModules.length ? total / this.bandModules.length : 0;
+      this.updateUnvoicedPath(activity, frameSeconds);
+      this.updateTrackedPitch(activity);
       this.updateMeter(activity);
+      this.updateCurrentNoteDisplay();
       this.drawSpectrometerFrame(activity);
       if (activity > 0.18) {
         this.setStatusLed("green");
@@ -449,12 +528,14 @@ class AggregaVoxEngine {
     const fundamental = this.getQuantizedFundamental();
     const now = this.audioContext.currentTime;
 
-    for (const { oscillator, gain, harmonic } of this.carrierOscillators) {
-      oscillator.type = waveform;
-      oscillator.frequency.setTargetAtTime(fundamental * harmonic, now, 0.015);
-      gain.gain.setTargetAtTime(brightness / Math.pow(harmonic, 0.82), now, 0.02);
+      for (const { oscillator, gain, harmonic } of this.carrierOscillators) {
+        oscillator.type = waveform;
+        oscillator.frequency.setTargetAtTime(fundamental * harmonic, now, 0.015);
+        gain.gain.setTargetAtTime(brightness / Math.pow(harmonic, 0.82), now, 0.02);
+      }
+
+      this.updateCurrentNoteDisplay();
     }
-  }
 
   updateParameter(key, value) {
     this.parameters[key] = value;
@@ -495,6 +576,7 @@ class AggregaVoxEngine {
     this.updateMeter(0);
     this.drawSpectrometerIdle();
     this.setStatusLed("off");
+    this.updateCurrentNoteDisplay();
     this.disposeGraph();
 
     this.microphoneStream?.getTracks().forEach((track) => track.stop());
@@ -520,24 +602,39 @@ class AggregaVoxEngine {
     this.carrierOscillators = [];
 
     this.noiseSource?.stop();
-    this.noiseSource?.disconnect();
-    this.noiseSource = null;
+      this.noiseSource?.disconnect();
+      this.noiseSource = null;
 
-    this.noiseGainNode?.disconnect();
-    this.noiseFilter?.disconnect();
-    this.carrierBus?.disconnect();
+      this.unvoicedGainNode?.disconnect();
+      this.unvoicedNoiseFilter?.disconnect();
+      this.noiseGainNode?.disconnect();
+      this.noiseFilter?.disconnect();
+      this.sibilanceAnalyser?.disconnect();
+      this.sibilanceFilter?.disconnect();
+      this.carrierBus?.disconnect();
     this.carrierMonitorGainNode?.disconnect();
     this.dryGainNode?.disconnect();
     this.wetGainNode?.disconnect();
     this.outputCompressor?.disconnect();
     this.spectrometerAnalyser?.disconnect();
+    this.pitchAnalyser?.disconnect();
     this.outputGainNode?.disconnect();
     this.modulatorHighpass?.disconnect();
     this.modulatorLowpass?.disconnect();
     this.inputGainNode?.disconnect();
     this.microphoneSource?.disconnect();
-    this.spectrometerAnalyser = null;
-    this.spectrometerData = null;
+      this.spectrometerAnalyser = null;
+      this.spectrometerData = null;
+      this.pitchAnalyser = null;
+      this.pitchBuffer = null;
+      this.sibilanceFilter = null;
+      this.sibilanceAnalyser = null;
+      this.sibilanceBuffer = null;
+      this.unvoicedNoiseFilter = null;
+      this.unvoicedGainNode = null;
+      this.unvoicedEnvelope = 0;
+      this.trackedFundamental = null;
+    this.lastQuantizedFundamental = null;
   }
 
   drawSpectrometerIdle() {
@@ -667,6 +764,93 @@ class AggregaVoxEngine {
       segment.classList.toggle("meter-segment-active", index < litSegments);
     });
   }
+
+  updateCurrentNoteDisplay() {
+    renderSevenSegment(this.ui.currentNoteValue, this.getCurrentNoteLabel());
+  }
+
+  updateTrackedPitch(activity) {
+    if (!this.pitchAnalyser || !this.pitchBuffer) {
+      return;
+    }
+
+    if (activity < 0.03) {
+      return;
+    }
+
+    this.pitchAnalyser.getFloatTimeDomainData(this.pitchBuffer);
+    const estimatedPitch = this.estimatePitch(this.pitchBuffer, this.audioContext.sampleRate);
+
+    if (!estimatedPitch || estimatedPitch < 70 || estimatedPitch > 420) {
+      return;
+    }
+
+    this.trackedFundamental = this.trackedFundamental == null
+      ? estimatedPitch
+      : this.trackedFundamental + (estimatedPitch - this.trackedFundamental) * 0.35;
+
+    this.updateCarrier();
+  }
+
+  updateUnvoicedPath(activity, frameSeconds) {
+    if (!this.sibilanceAnalyser || !this.sibilanceBuffer || !this.unvoicedGainNode) {
+      return;
+    }
+
+    this.sibilanceAnalyser.getFloatTimeDomainData(this.sibilanceBuffer);
+
+    let sumSquares = 0;
+    for (let i = 0; i < this.sibilanceBuffer.length; i += 1) {
+      const sample = this.sibilanceBuffer[i];
+      sumSquares += sample * sample;
+    }
+
+    const rms = Math.sqrt(sumSquares / this.sibilanceBuffer.length);
+    const gate = this.parameters.headsetMode ? 0.012 : 0.009;
+    const lifted = Math.max(0, rms - gate);
+    const consonantEnergy = Math.min(1, lifted * 55);
+    const target = activity < 0.02 ? 0 : consonantEnergy;
+    const timeConstant = target > this.unvoicedEnvelope ? 0.01 : 0.07;
+    const smoothing = 1 - Math.exp(-frameSeconds / Math.max(0.001, timeConstant));
+    this.unvoicedEnvelope += (target - this.unvoicedEnvelope) * smoothing;
+
+    const gain = Math.min(0.75, this.unvoicedEnvelope * 0.65);
+    this.unvoicedGainNode.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
+  }
+
+  estimatePitch(buffer, sampleRate) {
+    let rms = 0;
+    for (let i = 0; i < buffer.length; i += 1) {
+      rms += buffer[i] * buffer[i];
+    }
+    rms = Math.sqrt(rms / buffer.length);
+    if (rms < 0.01) {
+      return null;
+    }
+
+    let bestOffset = -1;
+    let bestCorrelation = 0;
+    const minOffset = Math.floor(sampleRate / 420);
+    const maxOffset = Math.floor(sampleRate / 70);
+
+    for (let offset = minOffset; offset <= maxOffset; offset += 1) {
+      let correlation = 0;
+      for (let i = 0; i < buffer.length - offset; i += 1) {
+        correlation += buffer[i] * buffer[i + offset];
+      }
+
+      if (correlation > bestCorrelation) {
+        bestCorrelation = correlation;
+        bestOffset = offset;
+      }
+    }
+
+    if (bestOffset === -1 || bestCorrelation < 8) {
+      return null;
+    }
+
+    return sampleRate / bestOffset;
+  }
 }
 
 const engine = new AggregaVoxEngine(ui);
@@ -679,6 +863,14 @@ function renderSevenSegment(target, text) {
       const dot = document.createElement("span");
       dot.className = "seven-dot";
       target.appendChild(dot);
+      continue;
+    }
+
+    if (character === "#") {
+      const sharp = document.createElement("span");
+      sharp.className = "seven-sharp";
+      sharp.innerHTML = "<span></span><span></span><span></span><span></span>";
+      target.appendChild(sharp);
       continue;
     }
 

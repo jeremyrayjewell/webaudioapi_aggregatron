@@ -148,6 +148,29 @@ body {
   margin-left: auto;
 }
 
+.hero-note-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 78px;
+  align-self: center;
+}
+
+.hero-note-label {
+  color: var(--secondary);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.hero-note-display {
+  justify-content: center;
+  min-width: 100%;
+  min-height: 26px;
+}
+
 .hero-module {
   border: 1px solid rgba(195, 199, 163, 0.24);
   background: var(--panel-surface);
@@ -565,6 +588,51 @@ label .label-row {
     0 0 8px rgba(255, 114, 104, 0.45);
 }
 
+.seven-sharp {
+  position: relative;
+  width: 8px;
+  height: 14px;
+  display: inline-block;
+}
+
+.seven-sharp span {
+  position: absolute;
+  background: #ff7268;
+  box-shadow:
+    0 0 3px rgba(255, 114, 104, 0.95),
+    0 0 8px rgba(255, 114, 104, 0.45);
+}
+
+.seven-sharp span:nth-child(1),
+.seven-sharp span:nth-child(2) {
+  width: 1px;
+  height: 14px;
+  top: 0;
+}
+
+.seven-sharp span:nth-child(1) {
+  left: 2px;
+}
+
+.seven-sharp span:nth-child(2) {
+  right: 2px;
+}
+
+.seven-sharp span:nth-child(3),
+.seven-sharp span:nth-child(4) {
+  width: 8px;
+  height: 1px;
+  left: 0;
+}
+
+.seven-sharp span:nth-child(3) {
+  top: 4px;
+}
+
+.seven-sharp span:nth-child(4) {
+  top: 9px;
+}
+
 body.audio-on .value-display {
   color: #d7ff77;
   text-shadow:
@@ -583,6 +651,13 @@ body.audio-on .seven-seg-on {
 }
 
 body.audio-on .seven-dot {
+  background: #d7ff77;
+  box-shadow:
+    0 0 3px rgba(184, 243, 109, 0.95),
+    0 0 8px rgba(184, 243, 109, 0.45);
+}
+
+body.audio-on .seven-sharp span {
   background: #d7ff77;
   box-shadow:
     0 0 3px rgba(184, 243, 109, 0.95),
