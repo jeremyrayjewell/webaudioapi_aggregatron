@@ -1,0 +1,245 @@
+:root {
+  color-scheme: dark;
+  --bg: #08131f;
+  --bg-elevated: rgba(12, 27, 42, 0.88);
+  --panel-border: rgba(142, 210, 255, 0.18);
+  --text: #f4f8fb;
+  --muted: #9db4c7;
+  --accent: #7be0b8;
+  --accent-strong: #ffd166;
+  --danger: #ff7b7b;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(123, 224, 184, 0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(255, 209, 102, 0.12), transparent 25%),
+    linear-gradient(180deg, #09111b 0%, #07121f 50%, #040b13 100%);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+select,
+input {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+button {
+  cursor: pointer;
+  padding: 0.8rem 1rem;
+  background: linear-gradient(135deg, var(--accent), #57b7ff);
+  color: #04121b;
+  font-weight: 700;
+}
+
+button.danger,
+.step-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+option {
+  background: #102131;
+  color: var(--text);
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+label span {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+strong {
+  font-size: 0.85rem;
+  color: var(--accent-strong);
+}
+
+.app-shell {
+  width: min(1200px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.panel {
+  padding: 1.4rem;
+  margin-top: 1.25rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 22px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+.hero {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+.hero h1,
+.section-header h2,
+.card-header h3 {
+  margin: 0;
+}
+
+.intro,
+.section-header p {
+  color: var(--muted);
+  max-width: 68ch;
+}
+
+.transport,
+.section-header,
+.card-header,
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.transport-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.master-gain-control {
+  min-width: 220px;
+  flex: 1;
+}
+
+.status-pill {
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+}
+
+.status-pill.ready {
+  color: var(--accent);
+  border-color: rgba(123, 224, 184, 0.3);
+}
+
+.global-grid,
+.control-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.info-card {
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  display: grid;
+  gap: 0.3rem;
+}
+
+.oscillator-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.oscillator-card {
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lfo-panel {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.step-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.step-cell {
+  padding: 0.9rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.step-cell.active {
+  border-color: rgba(123, 224, 184, 0.28);
+}
+
+.step-cell.current {
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.6);
+  background: rgba(255, 209, 102, 0.1);
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    width: min(100% - 1rem, 1200px);
+    padding-top: 1rem;
+  }
+
+  .transport,
+  .section-header,
+  .card-header,
+  .toggle-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .transport-buttons {
+    flex-direction: column;
+  }
+
+  .master-gain-control {
+    min-width: 0;
+  }
+
+  .step-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
